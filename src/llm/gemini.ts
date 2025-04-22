@@ -1,14 +1,35 @@
-import {
-    GoogleGenerativeAI
-} from "@google/generative-ai";
-import dotenv from 'dotenv';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
-dotenv.config();
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-if (!GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not set in .env file");
- }
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash",systemInstruction:"You are a powerful assistant who have access to various tools , so you carefully checks what the user wants and check if you have any tool suitable for the answer available at your end. if yes make a call to that tool and send response to the user", });
+// Convert `import.meta.url` to a file path
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-export default geminiModel;
+const configPath = path.join(
+  __dirname,
+  "../src/backend/configurations/serverConfig.json"
+);
+
+export async function initializeAndGetModel() {
+  try {
+    const data = fs.readFileSync(configPath, "utf-8");
+    if (!data) {
+      return null;
+    }
+    const serverConfigurations = JSON.parse(data);
+    const { GEMINI_API_KEY } = serverConfigurations;
+
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const geminiModel = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction:
+        "You are a powerful assistant who have access to various tools , so you carefully checks what the user wants and check if you have any tool suitable for the answer available at your end. if yes make a call to that tool and send response to the user",
+    });
+
+    return geminiModel;
+  } catch (e) {
+    console.log(e);
+  }
+}

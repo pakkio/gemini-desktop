@@ -5,7 +5,7 @@ import {
   GenerateContentResponse,
 } from "@google/generative-ai";
 import { connectToMcpServers } from "../../../utils/llmChat/getMcpTools";
-import geminiModel from "../../../llm/gemini";
+import { initializeAndGetModel } from "../../../llm/gemini";
 
 export const chatWithLLM = async (req: any, res: any) => {
   try {
@@ -20,7 +20,11 @@ export const chatWithLLM = async (req: any, res: any) => {
       res.status(503).json({ error: "No MCP Servers are connected" });
       return;
     }
-
+    const geminiModel = await initializeAndGetModel();
+    if (!geminiModel) {
+      res.status(503).json({ error: "Server LLM not configured" });
+      return;
+    }
     const chat = geminiModel.startChat({
       history: (history || []) as Content[],
 

@@ -13,12 +13,12 @@ import require$$1$5 from "node:events";
 import require$$0$8, { fileURLToPath } from "url";
 import require$$2$1 from "node:fs";
 import require$$2$2 from "node:http";
-import require$$0$a from "crypto";
-import require$$0$9 from "fs";
+import require$$0$9 from "crypto";
+import fs$4 from "fs";
 import require$$6$1 from "querystring";
 import require$$1$4 from "node:net";
 import require$$13 from "stream";
-import require$$0$b from "child_process";
+import require$$0$a from "child_process";
 import process$1 from "node:process";
 var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
 function getDefaultExportFromCjs(x) {
@@ -27745,8 +27745,8 @@ var utils = {};
  * MIT Licensed
  */
 var etag_1 = etag$1;
-var crypto$1 = require$$0$a;
-var Stats = require$$0$9.Stats;
+var crypto$1 = require$$0$9;
+var Stats = fs$4.Stats;
 var toString = Object.prototype.toString;
 function entitytag(entity) {
   if (entity.length === 0) {
@@ -40582,7 +40582,7 @@ function onceStrict(fn) {
   return f;
 }
 var onceExports = once$1.exports;
-var router$3 = { exports: {} };
+var router$4 = { exports: {} };
 var isPromise$3 = { exports: {} };
 isPromise$3.exports = isPromise$2;
 isPromise$3.exports.default = isPromise$2;
@@ -41231,8 +41231,8 @@ const deprecate = depd_1("router");
 const slice = Array.prototype.slice;
 const flatten = Array.prototype.flat;
 const methods = METHODS.map((method) => method.toLowerCase());
-router$3.exports = Router;
-router$3.exports.Route = Route;
+router$4.exports = Router;
+router$4.exports.Route = Route;
 function Router(options) {
   if (!(this instanceof Router)) {
     return new Router(options);
@@ -41612,7 +41612,7 @@ function wrap(old, fn) {
     fn.apply(this, args);
   };
 }
-var routerExports = router$3.exports;
+var routerExports = router$4.exports;
 (function(module, exports) {
   /*!
    * express
@@ -54771,7 +54771,7 @@ function ContentDisposition(type3, parameters) {
 var contentDispositionExports = contentDisposition$2.exports;
 var cookieSignature = {};
 (function(exports) {
-  var crypto2 = require$$0$a;
+  var crypto2 = require$$0$9;
   exports.sign = function(val, secret) {
     if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
     if (null == secret) throw new TypeError("Secret key must be provided.");
@@ -66758,7 +66758,7 @@ var encodeUrl$1 = encodeurl;
 var escapeHtml$1 = escapeHtml_1;
 var etag = etag_1;
 var fresh = fresh_1;
-var fs$2 = require$$0$9;
+var fs$2 = fs$4;
 var mime$1 = mimeTypes;
 var ms = ms$1;
 var onFinished$1 = onFinishedExports;
@@ -68197,10 +68197,10 @@ const version$1 = "16.5.0";
 const require$$4 = {
   version: version$1
 };
-const fs$1 = require$$0$9;
+const fs$1 = fs$4;
 const path$3 = path$7;
 const os = require$$0$6;
-const crypto = require$$0$a;
+const crypto = require$$0$9;
 const packageJson = require$$4;
 const version = packageJson.version;
 const LINE = /(?:^|^)\s*(?:export\s+)?([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/mg;
@@ -68460,12 +68460,12 @@ main.exports.populate = DotenvModule.populate;
 main.exports = DotenvModule;
 var mainExports = main.exports;
 const dotenv = /* @__PURE__ */ getDefaultExportFromCjs(mainExports);
-const __filename$1 = fileURLToPath(import.meta.url);
-const __dirname$2 = path$7.dirname(__filename$1);
-const configPath$1 = path$7.join(__dirname$2, "../src/backend/configurations/mcpServicesConfig.json");
+const __filename$4 = fileURLToPath(import.meta.url);
+const __dirname$5 = path$7.dirname(__filename$4);
+const configPath$4 = path$7.join(__dirname$5, "../src/backend/configurations/mcpServicesConfig.json");
 const getServicesConfig = (_, res2) => {
   try {
-    const data = require$$0$9.readFileSync(configPath$1, "utf-8");
+    const data = fs$4.readFileSync(configPath$4, "utf-8");
     if (!data) {
       return res2.status(400).json({ error: "No data saved yet" });
     }
@@ -68475,21 +68475,21 @@ const getServicesConfig = (_, res2) => {
     res2.status(500).json({ error: "Failed to read config." });
   }
 };
-const __filename = fileURLToPath(import.meta.url);
-const __dirname$1 = path$7.dirname(__filename);
-const configPath = path$7.join(__dirname$1, "../src/backend/configurations/mcpServicesConfig.json");
+const __filename$3 = fileURLToPath(import.meta.url);
+const __dirname$4 = path$7.dirname(__filename$3);
+const configPath$3 = path$7.join(__dirname$4, "../src/backend/configurations/mcpServicesConfig.json");
 const saveServicesConfig = (req2, res2) => {
   try {
     const data = req2.body;
-    require$$0$9.writeFileSync(configPath, JSON.stringify(data, null, 2));
+    fs$4.writeFileSync(configPath$3, JSON.stringify(data, null, 2));
     return res2.json(data);
   } catch (err) {
     res2.status(500).json({ error: "Failed to save config." });
   }
 };
-const router$2 = express.Router();
-router$2.get("/get", getServicesConfig);
-router$2.post("/save", saveServicesConfig);
+const router$3 = express.Router();
+router$3.get("/get", getServicesConfig);
+router$3.post("/save", saveServicesConfig);
 var SchemaType;
 (function(SchemaType2) {
   SchemaType2["STRING"] = "string";
@@ -75132,7 +75132,7 @@ function requireWindows() {
   hasRequiredWindows = 1;
   windows = isexe2;
   isexe2.sync = sync2;
-  var fs2 = require$$0$9;
+  var fs2 = fs$4;
   function checkPathExt(path3, options) {
     var pathext = options.pathExt !== void 0 ? options.pathExt : process.env.PATHEXT;
     if (!pathext) {
@@ -75173,7 +75173,7 @@ function requireMode() {
   hasRequiredMode = 1;
   mode = isexe2;
   isexe2.sync = sync2;
-  var fs2 = require$$0$9;
+  var fs2 = fs$4;
   function isexe2(path3, options, cb) {
     fs2.stat(path3, function(er, stat) {
       cb(er, er ? false : checkStat(stat, options));
@@ -75418,7 +75418,7 @@ var shebangCommand$1 = (string = "") => {
   }
   return argument ? `${binary} ${argument}` : binary;
 };
-const fs = require$$0$9;
+const fs = fs$4;
 const shebangCommand = shebangCommand$1;
 function readShebang$1(command) {
   const size = 150;
@@ -75531,7 +75531,7 @@ var enoent$1 = {
   verifyENOENTSync,
   notFoundError
 };
-const cp = require$$0$b;
+const cp = require$$0$a;
 const parse = parse_1;
 const enoent = enoent$1;
 function spawn(command, args, options) {
@@ -75720,7 +75720,7 @@ async function connectToMcpServers() {
     __dirname2,
     "../src/backend/configurations/mcpServicesConfig.json"
   );
-  const data = require$$0$9.readFileSync(configPath2, "utf-8");
+  const data = fs$4.readFileSync(configPath2, "utf-8");
   if (!data) {
     return { allGeminiTools, mcpClients };
   }
@@ -75813,13 +75813,30 @@ async function connectToMcpServers() {
     return { allGeminiTools, mcpClients };
   }
 }
-dotenv.config();
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-if (!GEMINI_API_KEY) {
-  throw new Error("GEMINI_API_KEY is not set in .env file");
+const __filename$2 = fileURLToPath(import.meta.url);
+const __dirname$3 = path$7.dirname(__filename$2);
+const configPath$2 = path$7.join(
+  __dirname$3,
+  "../src/backend/configurations/serverConfig.json"
+);
+async function initializeAndGetModel() {
+  try {
+    const data = fs$4.readFileSync(configPath$2, "utf-8");
+    if (!data) {
+      return null;
+    }
+    const serverConfigurations = JSON.parse(data);
+    const { GEMINI_API_KEY } = serverConfigurations;
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const geminiModel = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      systemInstruction: "You are a powerful assistant who have access to various tools , so you carefully checks what the user wants and check if you have any tool suitable for the answer available at your end. if yes make a call to that tool and send response to the user"
+    });
+    return geminiModel;
+  } catch (e) {
+    console.log(e);
+  }
 }
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are a powerful assistant who have access to various tools , so you carefully checks what the user wants and check if you have any tool suitable for the answer available at your end. if yes make a call to that tool and send response to the user" });
 const chatWithLLM = async (req2, res2) => {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i;
   try {
@@ -75832,6 +75849,11 @@ const chatWithLLM = async (req2, res2) => {
     const { allGeminiTools: allGeminiTools2, mcpClients: mcpClients2 } = await connectToMcpServers();
     if (mcpClients2.size === 0) {
       res2.status(503).json({ error: "No MCP Servers are connected" });
+      return;
+    }
+    const geminiModel = await initializeAndGetModel();
+    if (!geminiModel) {
+      res2.status(503).json({ error: "Server LLM not configured" });
       return;
     }
     const chat = geminiModel.startChat({
@@ -75925,11 +75947,49 @@ const chatWithLLM = async (req2, res2) => {
     res2.status(500).json({ error: "Failed to read config." });
   }
 };
+const router$2 = express.Router();
+router$2.post("/", chatWithLLM);
+const __filename$1 = fileURLToPath(import.meta.url);
+const __dirname$2 = path$7.dirname(__filename$1);
+const configPath$1 = path$7.join(
+  __dirname$2,
+  "../src/backend/configurations/serverConfig.json"
+);
+const getServerConfiguration = (_, res2) => {
+  try {
+    const data = fs$4.readFileSync(configPath$1, "utf-8");
+    if (!data) {
+      return res2.json({ GEMINI_API_KEY: "" });
+    }
+    const serverConfiguration = JSON.parse(data);
+    return res2.json({ ...serverConfiguration });
+  } catch (err) {
+    console.log(err);
+    res2.status(500).json({ error: "Failed to read config." });
+  }
+};
+const __filename = fileURLToPath(import.meta.url);
+const __dirname$1 = path$7.dirname(__filename);
+const configPath = path$7.join(
+  __dirname$1,
+  "../src/backend/configurations/serverConfig.json"
+);
+const saveServerConfiguration = (req2, res2) => {
+  try {
+    const data = req2.body;
+    fs$4.writeFileSync(configPath, JSON.stringify(data, null, 2));
+    return res2.json(data);
+  } catch (err) {
+    res2.status(500).json({ error: "Failed to save config." });
+  }
+};
 const router$1 = express.Router();
-router$1.post("/", chatWithLLM);
+router$1.get("/", getServerConfiguration);
+router$1.post("/", saveServerConfiguration);
 const router = express$1.Router();
-router.use("/services", router$2);
-router.use("/chat", router$1);
+router.use("/services", router$3);
+router.use("/chat", router$2);
+router.use("/server-config", router$1);
 dotenv.config();
 function startServer() {
   const PORT = process.env.PORT || 5001;
