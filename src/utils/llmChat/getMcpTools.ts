@@ -23,7 +23,7 @@ export async function connectToMcpServers(): Promise<{
 
   const configPath = path.join(
     __dirname,
-    "../src/backend/data/servicesConfig.json"
+    "../src/backend/configurations/mcpServicesConfig.json"
   );
   const data = fs.readFileSync(configPath, "utf-8");
   if (!data) {

@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const configPath = path.join(__dirname, "../src/backend/data/servicesConfig.json");
+const configPath = path.join(__dirname, "../src/backend/configurations/mcpServicesConfig.json");
 
 export const getServicesConfig = (req:any, res:any) => {
   try {
