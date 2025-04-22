@@ -1,4 +1,11 @@
-import { Box, Typography, Button, Paper } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Button,
+  Paper,
+  Fade,
+  Stack,
+} from "@mui/material";
 import Grid from "@mui/material/Grid";
 import { useNavigate } from "react-router-dom";
 import {
@@ -9,18 +16,19 @@ import {
 } from "@hello-pangea/dnd";
 import { useEffect, useState } from "react";
 import { get, post } from "../../utils/api_helper/api_helper";
-// MUI icons
-import CloudIcon from "@mui/icons-material/Cloud";
-import StorageIcon from "@mui/icons-material/Storage";
-import GitHubIcon from "@mui/icons-material/GitHub";
-import FolderIcon from "@mui/icons-material/Folder";
-import GoogleIcon from "@mui/icons-material/Google";
-import MapIcon from "@mui/icons-material/Map";
-import MemoryIcon from "@mui/icons-material/Memory";
-import ChatIcon from "@mui/icons-material/Chat";
-import CodeIcon from "@mui/icons-material/Code";
-import SearchIcon from "@mui/icons-material/Search";
-import IntegrationInstructionsIcon from "@mui/icons-material/IntegrationInstructions";
+import {
+  Cloud as CloudIcon,
+  Storage as StorageIcon,
+  GitHub as GitHubIcon,
+  Folder as FolderIcon,
+  Google as GoogleIcon,
+  Map as MapIcon,
+  Memory as MemoryIcon,
+  Chat as ChatIcon,
+  Code as CodeIcon,
+  Search as SearchIcon,
+  IntegrationInstructions as IntegrationInstructionsIcon,
+} from "@mui/icons-material";
 import { serviceConfigs } from "../../utils/serviceConfigs";
 
 const labelKeyMap: Record<string, string> = {
@@ -40,6 +48,7 @@ const labelKeyMap: Record<string, string> = {
   Memory: "memory",
   GitLab: "gitlab",
 };
+
 const iconMap: Record<string, JSX.Element> = {
   "AWS KB Retrieval": <CloudIcon />,
   "Brave Search": <SearchIcon />,
@@ -90,28 +99,19 @@ export default function SettingsPage() {
       }
     } catch (e) {
       console.log(e);
-      // alert("Something went wrong")
     }
   }
 
   async function saveSettings() {
     try {
-      const settingsToBeSaved = {
-        leftList,
-        rightList,
-      };
-      console.log(settingsToBeSaved)
-      const settings = await post(
-        "/api/services/save",
-        settingsToBeSaved
-      );
+      const settingsToBeSaved = { leftList, rightList };
+      const settings = await post("/api/services/save", settingsToBeSaved);
       if (!settings.error) {
         setRightList(settings.rightList);
         setLeftList(settings.leftList);
       }
     } catch (e) {
       console.log(e);
-      // alert("Something went wrong")
     }
   }
 
@@ -121,19 +121,11 @@ export default function SettingsPage() {
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination } = result;
+    if (!destination || (source.droppableId === destination.droppableId &&
+      source.index === destination.index)) return;
 
-    if (
-      !destination ||
-      (source.droppableId === destination.droppableId &&
-        source.index === destination.index)
-    ) {
-      return;
-    }
-
-    const sourceList =
-      source.droppableId === "left" ? [...leftList] : [...rightList];
-    const destList =
-      destination.droppableId === "left" ? [...leftList] : [...rightList];
+    const sourceList = [...(source.droppableId === "left" ? leftList : rightList)];
+    const destList = [...(destination.droppableId === "left" ? leftList : rightList)];
 
     const [movedItem] = sourceList.splice(source.index, 1);
     destList.splice(destination.index, 0, movedItem);
@@ -147,123 +139,116 @@ export default function SettingsPage() {
     }
   };
 
+  const renderList = (
+    items: ServiceItem[],
+    droppableId: string,
+    color: string
+  ) => {
+    const isRightList = droppableId === "right";
+  
+    return (
+      <Droppable droppableId={droppableId}>
+        {(provided) => (
+          <Paper
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            sx={{
+              minHeight: 400,
+              p: 2,
+              backgroundColor: color,
+              transition: "background-color 0.3s",
+              borderRadius: 2,
+              boxShadow: 3,
+              display: isRightList ? "grid" : "flex",
+              flexDirection: isRightList ? undefined : "column",
+              gap: isRightList ? 2 : 1.5, // spacing: 16px for right, 12px for left
+              ...(isRightList && {
+                gridTemplateColumns: "1fr 1fr", // 2 columns
+              }),
+            }}
+          >
+            {items.map((item, index) => (
+              <Draggable key={item.label} draggableId={item.label} index={index}>
+                {(provided) => (
+                  <Fade in timeout={400}>
+                    <Box
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      sx={{
+                        p: 1.5,
+                        backgroundColor: "#ffffff",
+                        borderRadius: 2,
+                        boxShadow: 2,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1.5,
+                        transition: "transform 0.2s, box-shadow 0.2s",
+                        ":hover": {
+                          boxShadow: 4,
+                          transform: "scale(1.02)",
+                        },
+                        cursor: "grab",
+                      }}
+                    >
+                      {iconMap[item.label] ?? "🛠️"}
+                      <Typography variant="body1" fontWeight={500}>
+                        {item.label}
+                      </Typography>
+                    </Box>
+                  </Fade>
+                )}
+              </Draggable>
+            ))}
+            {provided.placeholder}
+          </Paper>
+        )}
+      </Droppable>
+    );
+  };
+  
+
   return (
     <Box p={4}>
-      <Typography variant="h4" gutterBottom>
-        Settings
+      <Typography variant="h4" fontWeight="bold" gutterBottom>
+        Manage MCP Servers
       </Typography>
-      <Typography gutterBottom>
-        Drag services from right to left to activate them.
+      <Typography variant="subtitle1" gutterBottom>
+        Drag servers from right to left to enable them for the LLM.
       </Typography>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <Grid container spacing={4} mt={2} justifyContent={"space-around"}>
+        <Grid container spacing={4} mt={2}>
           <Grid item xs={12} md={6}>
             <Typography variant="h6" gutterBottom>
-              Active Services
+              Enabled MCP Servers (used by LLM)
             </Typography>
-            <Droppable droppableId="left">
-              {(provided) => (
-                <Paper
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  sx={{ minHeight: 400, p: 2 }}
-                >
-                  {leftList.map((item, index) => (
-                    <Draggable
-                      key={item.label}
-                      draggableId={item.label}
-                      index={index}
-                    >
-                      {(provided) => (
-                        <Box
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          sx={{
-                            mb: 1,
-                            p: 1,
-                            backgroundColor: "#f5f5f5",
-                            borderRadius: 1,
-                            boxShadow: 1,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1,
-                            cursor: "grab",
-                          }}
-                        >
-                          {iconMap[item.label] ?? "🛠️"} {item.label}
-                        </Box>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </Paper>
-              )}
-            </Droppable>
+            {renderList(leftList, "left", "#f0f7fa")}
           </Grid>
-
           <Grid item xs={12} md={6}>
             <Typography variant="h6" gutterBottom>
-              Available Services
+              Available MCP Servers
             </Typography>
-            <Droppable droppableId="right">
-              {(provided) => (
-                <Paper
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  sx={{ minHeight: 400, p: 2 }}
-                >
-                  {rightList.map((item, index) => (
-                    <Draggable
-                      key={item.label}
-                      draggableId={item.label}
-                      index={index}
-                    >
-                      {(provided) => (
-                        <Box
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          sx={{
-                            mb: 1,
-                            p: 1,
-                            backgroundColor: "#f0f0f0",
-                            borderRadius: 1,
-                            boxShadow: 1,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1,
-                            cursor: "grab",
-                          }}
-                        >
-                          {iconMap[item.label] ?? "🛠️"} {item.label}
-                        </Box>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </Paper>
-              )}
-            </Droppable>
+            {renderList(rightList, "right", "#fff3e0")}
           </Grid>
         </Grid>
       </DragDropContext>
 
-      <Box mt={4} display="flex" gap={2}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={async () => {
-           await  saveSettings()
-          }}
-        >
-          Save
+      <Stack mt={4} direction="row" spacing={2}>
+        <Button variant="contained" color="primary" onClick={saveSettings}>
+          Save Changes
         </Button>
         <Button variant="outlined" onClick={() => navigate("/")}>
           Cancel
         </Button>
-      </Box>
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={() => navigate("/server-config")}
+        >
+          Configure New Server
+        </Button>
+      </Stack>
     </Box>
   );
 }
