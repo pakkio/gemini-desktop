@@ -1,5 +1,4 @@
 import { app, BrowserWindow, ipcMain, screen } from "electron";
-import { createRequire } from "node:module";
 import { fileURLToPath as fileURLToPath$1 } from "node:url";
 import path$8 from "node:path";
 import path$7 from "path";
@@ -76005,7 +76004,6 @@ function startServer() {
     console.log(`🚀 Backend server running on http://localhost:${PORT}`);
   });
 }
-createRequire(import.meta.url);
 const __dirname = path$8.dirname(fileURLToPath$1(import.meta.url));
 process.env.APP_ROOT = path$8.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];

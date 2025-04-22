@@ -81,7 +81,7 @@ export default function ChatPage() {
           },
         ]);
       }
-    } catch (err:{message:string}) {
+    } catch (err:any) {
       setMessages((prev) => [
         ...prev,
         {
