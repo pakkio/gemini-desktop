@@ -1,0 +1,205 @@
+{
+  "leftList": [
+    {
+      "label": "AWS KB Retrieval",
+      "key": "aws-kb-retrieval",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-aws-kb-retrieval"
+        ],
+        "env": {
+          "AWS_ACCESS_KEY_ID": "YOUR_ACCESS_KEY_HERE",
+          "AWS_SECRET_ACCESS_KEY": "YOUR_SECRET_ACCESS_KEY_HERE",
+          "AWS_REGION": "YOUR_AWS_REGION_HERE"
+        }
+      }
+    },
+    {
+      "label": "GitHub",
+      "key": "github",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-github"
+        ],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"
+        }
+      }
+    }
+  ],
+  "rightList": [
+    {
+      "label": "Brave Search",
+      "key": "brave-search",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-brave-search"
+        ],
+        "env": {
+          "BRAVE_API_KEY": "YOUR_API_KEY_HERE"
+        }
+      }
+    },
+    {
+      "label": "Filesystem",
+      "key": "filesystem",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-filesystem",
+          "/Users/username/Desktop",
+          "/path/to/other/allowed/dir"
+        ]
+      }
+    },
+    {
+      "label": "EverArt",
+      "key": "everart",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-everart"
+        ],
+        "env": {
+          "EVERART_API_KEY": "your_key_here"
+        }
+      }
+    },
+    {
+      "label": "Everything",
+      "key": "everything",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-everything"
+        ]
+      }
+    },
+    {
+      "label": "Git",
+      "config": {}
+    },
+    {
+      "label": "GitLab",
+      "key": "gitlab",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-gitlab"
+        ],
+        "env": {
+          "GITLAB_PERSONAL_ACCESS_TOKEN": ,
+          "GITLAB_API_URL": "https://gitlab.com/api/v4"
+        }
+      }
+    },
+    {
+      "label": "Google Drive",
+      "key": "gdrive",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-gdrive"
+        ]
+      }
+    },
+    {
+      "label": "Google Maps",
+      "key": "google-maps",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-google-maps"
+        ],
+        "env": {
+          "GOOGLE_MAPS_API_KEY": "<YOUR_API_KEY>"
+        }
+      }
+    },
+    {
+      "label": "Memory",
+      "key": "memory",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-memory"
+        ]
+      }
+    },
+    {
+      "label": "PostgreSQL",
+      "key": "postgres",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-postgres",
+          "postgresql://localhost/mydb"
+        ]
+      }
+    },
+    {
+      "label": "Puppeteer",
+      "key": "puppeteer",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-puppeteer"
+        ]
+      }
+    },
+    {
+      "label": "Redis",
+      "key": "redis",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-redis",
+          "redis://localhost:6379"
+        ]
+      }
+    },
+    {
+      "label": "Sequential Thinking",
+      "key": "sequential-thinking",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-sequential-thinking"
+        ]
+      }
+    },
+    {
+      "label": "Slack",
+      "key": "slack",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-slack"
+        ],
+        "env": {
+          "SLACK_BOT_TOKEN": "xoxb-your-bot-token",
+          "SLACK_TEAM_ID": "T01234567",
+          "SLACK_CHANNEL_IDS": "C01234567, C76543210"
+        }
+      }
+    }
+  ]
+}

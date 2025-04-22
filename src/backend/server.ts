@@ -1,6 +1,7 @@
 import express, { Request, Response, Application } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import routes from './routes/index.ts';
 import {
     GoogleGenerativeAI,
     Part,
@@ -381,7 +382,7 @@ res.json({ reply: finalAnswer, history: finalHistory });
     }
   }
 });
-
+app.use('/api', routes);
 // --- Server Startup ---
 app.listen(PORT, async () => {
   console.log(`🚀 Backend server running on http://localhost:${PORT}`);
@@ -407,19 +408,3 @@ process.on('SIGINT', async () => {
 });
 }
 
-
-
-// export function startServer() {
-//   const app = express();
-
-//   app.use(cors({
-//     origin: 'http://localhost:5173',
-//   }));
-//   app.get('/api/info', (req, res) => {
-//     res.json({ message: 'From Express backend in Electron' });
-//   });
-
-//   app.listen(3001, () => {
-//     console.log('Server listening on http://localhost:3001');
-//   });
-// }

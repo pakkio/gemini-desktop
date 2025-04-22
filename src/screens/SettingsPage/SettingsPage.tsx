@@ -7,8 +7,8 @@ import {
   Draggable,
   DropResult,
 } from "@hello-pangea/dnd";
-import { useState } from "react";
-import {get} from '../../utils/api_helper/api_helper'
+import { useEffect, useState } from "react";
+import { get, post } from "../../utils/api_helper/api_helper";
 // MUI icons
 import CloudIcon from "@mui/icons-material/Cloud";
 import StorageIcon from "@mui/icons-material/Storage";
@@ -81,16 +81,43 @@ export default function SettingsPage() {
   const [leftList, setLeftList] = useState(initialLeftList);
   const [rightList, setRightList] = useState(defaultRightList);
 
-  async function getInitialSettings(){
-    try{
-      const settings = await get
-
-    }catch(e){
-      console.log(e)
-      alert("Something went wrong")
+  async function getSettings() {
+    try {
+      const settings = await get("/api/services/get");
+      if (!settings.error) {
+        setRightList(settings.rightList);
+        setLeftList(settings.leftList);
+      }
+    } catch (e) {
+      console.log(e);
+      // alert("Something went wrong")
     }
   }
 
+  async function saveSettings() {
+    try {
+      const settingsToBeSaved = {
+        leftList,
+        rightList,
+      };
+      console.log(settingsToBeSaved)
+      const settings = await post(
+        "/api/services/save",
+        settingsToBeSaved
+      );
+      if (!settings.error) {
+        setRightList(settings.rightList);
+        setLeftList(settings.leftList);
+      }
+    } catch (e) {
+      console.log(e);
+      // alert("Something went wrong")
+    }
+  }
+
+  useEffect(() => {
+    getSettings();
+  }, []);
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination } = result;
@@ -227,12 +254,8 @@ export default function SettingsPage() {
         <Button
           variant="contained"
           color="primary"
-          onClick={() => {
-            const configsToSave = leftList.map((item) => ({
-              key: item.key,
-              config: item.config,
-            }));
-            console.log("Saved:", configsToSave);
+          onClick={async () => {
+           await  saveSettings()
           }}
         >
           Save

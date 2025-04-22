@@ -1,22 +1,22 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, screen } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath as fileURLToPath$1 } from "node:url";
-import path$7 from "node:path";
-import require$$1$1 from "path";
-import require$$1$2 from "tty";
-import require$$1$3 from "util";
+import path$8 from "node:path";
+import path$7 from "path";
+import require$$1$1 from "tty";
+import require$$1$2 from "util";
 import require$$0$6 from "os";
 import require$$0$7 from "buffer";
-import require$$1$4 from "string_decoder";
+import require$$1$3 from "string_decoder";
 import require$$4$2 from "node:zlib";
-import require$$1$6 from "node:events";
+import require$$1$5 from "node:events";
 import require$$0$8, { fileURLToPath } from "url";
 import require$$2$1 from "node:fs";
 import require$$2$2 from "node:http";
 import require$$0$a from "crypto";
 import require$$0$9 from "fs";
 import require$$6$1 from "querystring";
-import require$$1$5 from "node:net";
+import require$$1$4 from "node:net";
 import require$$13 from "stream";
 import require$$0$b from "child_process";
 import process$1 from "node:process";
@@ -32,7 +32,7 @@ var httpErrors = { exports: {} };
  * Copyright(c) 2014-2018 Douglas Christopher Wilson
  * MIT Licensed
  */
-var relative = require$$1$1.relative;
+var relative = path$7.relative;
 var depd_1 = depd;
 var basePath = process.cwd();
 function containsNamespace(str, namespace) {
@@ -1181,7 +1181,7 @@ function requireSupportsColor() {
   if (hasRequiredSupportsColor) return supportsColor_1;
   hasRequiredSupportsColor = 1;
   const os2 = require$$0$6;
-  const tty = require$$1$2;
+  const tty = require$$1$1;
   const hasFlag2 = requireHasFlag();
   const { env } = process;
   let forceColor;
@@ -1282,8 +1282,8 @@ function requireNode() {
   if (hasRequiredNode) return node.exports;
   hasRequiredNode = 1;
   (function(module, exports) {
-    const tty = require$$1$2;
-    const util2 = require$$1$3;
+    const tty = require$$1$1;
+    const util2 = require$$1$2;
     exports.init = init;
     exports.log = log2;
     exports.formatArgs = formatArgs;
@@ -1862,7 +1862,7 @@ function requireInternal() {
   }
   InternalCodec.prototype.encoder = InternalEncoder;
   InternalCodec.prototype.decoder = InternalDecoder;
-  var StringDecoder = require$$1$4.StringDecoder;
+  var StringDecoder = require$$1$3.StringDecoder;
   if (!StringDecoder.prototype.end)
     StringDecoder.prototype.end = function() {
     };
@@ -24534,7 +24534,7 @@ var mimeScore$3 = function mimeScore(mimeType, source = "default") {
  */
 (function(exports) {
   var db = mimeDb$3;
-  var extname2 = require$$1$1.extname;
+  var extname2 = path$7.extname;
   var mimeScore6 = mimeScore$3;
   var EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/;
   var TEXT_TYPE_REGEXP = /^text\//i;
@@ -25069,7 +25069,7 @@ function requireText() {
   return text_1;
 }
 var type = TypeError;
-var util_inspect = require$$1$3.inspect;
+var util_inspect = require$$1$2.inspect;
 var hasMap = typeof Map === "function" && Map.prototype;
 var mapSizeDescriptor = Object.getOwnPropertyDescriptor && hasMap ? Object.getOwnPropertyDescriptor(Map.prototype, "size") : null;
 var mapSize = hasMap && mapSizeDescriptor && typeof mapSizeDescriptor.get === "function" ? mapSizeDescriptor.get : null;
@@ -27652,7 +27652,7 @@ function commonjsRequire(path3) {
  * MIT Licensed
  */
 var debug$4 = srcExports("express:view");
-var path$6 = path$7;
+var path$6 = path$8;
 var fs$3 = require$$2$1;
 var dirname = path$6.dirname;
 var basename$1 = path$6.basename;
@@ -39475,7 +39475,7 @@ var mimeScore$2 = function mimeScore2(mimeType, source = "default") {
  */
 (function(exports) {
   var db = mimeDb$2;
-  var extname2 = require$$1$1.extname;
+  var extname2 = path$7.extname;
   var mimeScore6 = mimeScore$2;
   var EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/;
   var TEXT_TYPE_REGEXP = /^text\//i;
@@ -40582,7 +40582,7 @@ function onceStrict(fn) {
   return f;
 }
 var onceExports = once$1.exports;
-var router = { exports: {} };
+var router$2 = { exports: {} };
 var isPromise$3 = { exports: {} };
 isPromise$3.exports = isPromise$2;
 isPromise$3.exports.default = isPromise$2;
@@ -41231,8 +41231,8 @@ const deprecate = depd_1("router");
 const slice = Array.prototype.slice;
 const flatten = Array.prototype.flat;
 const methods = METHODS.map((method) => method.toLowerCase());
-router.exports = Router;
-router.exports.Route = Route;
+router$2.exports = Router;
+router$2.exports.Route = Route;
 function Router(options) {
   if (!(this instanceof Router)) {
     return new Router(options);
@@ -41612,7 +41612,7 @@ function wrap(old, fn) {
     fn.apply(this, args);
   };
 }
-var routerExports = router.exports;
+var routerExports = router$2.exports;
 (function(module, exports) {
   /*!
    * express
@@ -41629,7 +41629,7 @@ var routerExports = router.exports;
   var compileETag = utils.compileETag;
   var compileQueryParser = utils.compileQueryParser;
   var compileTrust2 = utils.compileTrust;
-  var resolve3 = path$7.resolve;
+  var resolve3 = path$8.resolve;
   var once2 = onceExports;
   var Router2 = routerExports;
   var slice2 = Array.prototype.slice;
@@ -54068,7 +54068,7 @@ var mimeScore$1 = function mimeScore3(mimeType, source = "default") {
  */
 (function(exports) {
   var db = mimeDb$1;
-  var extname2 = require$$1$1.extname;
+  var extname2 = path$7.extname;
   var mimeScore6 = mimeScore$1;
   var EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/;
   var TEXT_TYPE_REGEXP = /^text\//i;
@@ -54407,7 +54407,7 @@ function sortByRangeStart(a, b) {
  * MIT Licensed
  */
 var accepts = accepts$1;
-var isIP = require$$1$5.isIP;
+var isIP = require$$1$4.isIP;
 var typeis = typeIsExports;
 var http$1 = require$$2$2;
 var fresh$1 = fresh_1;
@@ -54613,7 +54613,7 @@ var safeBufferExports = safeBuffer.exports;
  */
 contentDisposition$2.exports = contentDisposition$1;
 contentDisposition$2.exports.parse = parse$5;
-var basename = require$$1$1.basename;
+var basename = path$7.basename;
 var Buffer$1 = safeBufferExports.Buffer;
 var ENCODE_URL_ATTR_CHAR_REGEXP = /[\x00-\x20"'()*,/:;<=>?@[\\\]{}\x7f]/g;
 var HEX_ESCAPE_REGEXP = /%[0-9A-Fa-f]{2}/;
@@ -66646,7 +66646,7 @@ var mimeScore4 = function mimeScore5(mimeType, source = "default") {
  */
 (function(exports) {
   var db = mimeDb;
-  var extname2 = require$$1$1.extname;
+  var extname2 = path$7.extname;
   var mimeScore$12 = mimeScore4;
   var EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/;
   var TEXT_TYPE_REGEXP = /^text\//i;
@@ -66763,10 +66763,10 @@ var mime$1 = mimeTypes;
 var ms = ms$1;
 var onFinished$1 = onFinishedExports;
 var parseRange = rangeParser_1;
-var path$5 = require$$1$1;
+var path$5 = path$7;
 var statuses$1 = statuses$3;
 var Stream = require$$13;
-var util$1 = require$$1$3;
+var util$1 = require$$1$2;
 var extname$1 = path$5.extname;
 var join = path$5.join;
 var normalize = path$5.normalize;
@@ -67314,8 +67314,8 @@ var escapeHtml = escapeHtml_1;
 var http = require$$2$2;
 var onFinished = onFinishedExports;
 var mime = mimeTypes$2;
-var path$4 = path$7;
-var pathIsAbsolute = path$7.isAbsolute;
+var path$4 = path$8;
+var pathIsAbsolute = path$8.isAbsolute;
 var statuses = statuses$3;
 var sign2 = cookieSignature.sign;
 var normalizeType = utils.normalizeType;
@@ -67772,7 +67772,7 @@ function requireServeStatic() {
   var encodeUrl2 = encodeurl;
   var escapeHtml2 = escapeHtml_1;
   var parseUrl2 = parseurlExports;
-  var resolve3 = require$$1$1.resolve;
+  var resolve3 = path$7.resolve;
   var send4 = send_1;
   var url2 = require$$0$8;
   serveStatic_1 = serveStatic;
@@ -67877,7 +67877,7 @@ function requireServeStatic() {
  */
 (function(module, exports) {
   var bodyParser2 = bodyParserExports;
-  var EventEmitter = require$$1$6.EventEmitter;
+  var EventEmitter = require$$1$5.EventEmitter;
   var mixin = mergeDescriptors_1;
   var proto = applicationExports;
   var Router2 = routerExports;
@@ -68198,7 +68198,7 @@ const require$$4 = {
   version: version$1
 };
 const fs$1 = require$$0$9;
-const path$3 = require$$1$1;
+const path$3 = path$7;
 const os = require$$0$6;
 const crypto = require$$0$a;
 const packageJson = require$$4;
@@ -68460,6 +68460,38 @@ main.exports.populate = DotenvModule.populate;
 main.exports = DotenvModule;
 var mainExports = main.exports;
 const dotenv = /* @__PURE__ */ getDefaultExportFromCjs(mainExports);
+const __filename$1 = fileURLToPath(import.meta.url);
+const __dirname$2 = path$7.dirname(__filename$1);
+const configPath$1 = path$7.join(__dirname$2, "../src/backend/data/servicesConfig.json");
+const getServicesConfig = (req2, res2) => {
+  try {
+    const data = require$$0$9.readFileSync(configPath$1, "utf-8");
+    if (!data) {
+      return res2.status(400).json({ error: "No data saved yet" });
+    }
+    return res2.json(JSON.parse(data));
+  } catch (err) {
+    console.log(err);
+    res2.status(500).json({ error: "Failed to read config." });
+  }
+};
+const __filename = fileURLToPath(import.meta.url);
+const __dirname$1 = path$7.dirname(__filename);
+const configPath = path$7.join(__dirname$1, "../src/backend/data/servicesConfig.json");
+const saveServicesConfig = (req2, res2) => {
+  try {
+    const data = req2.body;
+    require$$0$9.writeFileSync(configPath, JSON.stringify(data, null, 2));
+    return res2.json(data);
+  } catch (err) {
+    res2.status(500).json({ error: "Failed to save config." });
+  }
+};
+const router$1 = express.Router();
+router$1.get("/get", getServicesConfig);
+router$1.post("/save", saveServicesConfig);
+const router = express$1.Router();
+router.use("/services", router$1);
 var SchemaType;
 (function(SchemaType2) {
   SchemaType2["STRING"] = "string";
@@ -75123,7 +75155,7 @@ function sync(path3, options) {
   }
 }
 const isWindows = process.platform === "win32" || process.env.OSTYPE === "cygwin" || process.env.OSTYPE === "msys";
-const path$2 = require$$1$1;
+const path$2 = path$7;
 const COLON = isWindows ? ";" : ":";
 const isexe = isexe_1;
 const getNotFoundError = (cmd) => Object.assign(new Error(`not found: ${cmd}`), { code: "ENOENT" });
@@ -75224,7 +75256,7 @@ const pathKey = (options = {}) => {
 pathKey$1.exports = pathKey;
 pathKey$1.exports.default = pathKey;
 var pathKeyExports = pathKey$1.exports;
-const path$1 = require$$1$1;
+const path$1 = path$7;
 const which = which_1;
 const getPathKey = pathKeyExports;
 function resolveCommandAttempt(parsed, withoutPathExt) {
@@ -75307,7 +75339,7 @@ function readShebang$1(command) {
   return shebangCommand(buffer.toString());
 }
 var readShebang_1 = readShebang$1;
-const path2 = require$$1$1;
+const path2 = path$7;
 const resolveCommand = resolveCommand_1;
 const escape$1 = _escape;
 const readShebang = readShebang_1;
@@ -75603,9 +75635,9 @@ function startServer() {
   const toolToServerMap = /* @__PURE__ */ new Map();
   let allMcpTools = [];
   let allGeminiTools = [];
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname2 = require$$1$1.dirname(__filename);
-  const absoluteConfigPath = require$$1$1.resolve(__dirname2, MCP_CONFIG_PATH);
+  const __filename2 = fileURLToPath(import.meta.url);
+  const __dirname2 = path$7.dirname(__filename2);
+  const absoluteConfigPath = path$7.resolve(__dirname2, MCP_CONFIG_PATH);
   function convertMcpSchemaToGeminiSchema(mcpSchema) {
     const properties = {};
     if (mcpSchema == null ? void 0 : mcpSchema.properties) {
@@ -75732,9 +75764,9 @@ function startServer() {
       console.log(`Attempting to connect to MCP server "${serverKey}"...`);
       try {
         const nodeExecutablePath = process.execPath;
-        const nodeDir = require$$1$1.dirname(nodeExecutablePath);
+        const nodeDir = path$7.dirname(nodeExecutablePath);
         const currentPath = process.env.PATH || "";
-        const effectivePath = `${nodeDir}${require$$1$1.delimiter}${currentPath}`;
+        const effectivePath = `${nodeDir}${path$7.delimiter}${currentPath}`;
         const childEnv = {
           ...process.env,
           // Inherit parent environment
@@ -75864,6 +75896,7 @@ function startServer() {
       }
     }
   });
+  app2.use("/api", router);
   app2.listen(PORT, async () => {
     console.log(`🚀 Backend server running on http://localhost:${PORT}`);
     await connectToMcpServers();
@@ -75883,18 +75916,21 @@ function startServer() {
   });
 }
 createRequire(import.meta.url);
-const __dirname = path$7.dirname(fileURLToPath$1(import.meta.url));
-process.env.APP_ROOT = path$7.join(__dirname, "..");
+const __dirname = path$8.dirname(fileURLToPath$1(import.meta.url));
+process.env.APP_ROOT = path$8.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-const MAIN_DIST = path$7.join(process.env.APP_ROOT, "dist-electron");
-const RENDERER_DIST = path$7.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$7.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
+const MAIN_DIST = path$8.join(process.env.APP_ROOT, "dist-electron");
+const RENDERER_DIST = path$8.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$8.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 let win;
 function createWindow() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   win = new BrowserWindow({
-    icon: path$7.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    width,
+    height,
+    icon: path$8.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
-      preload: path$7.join(__dirname, "preload.mjs"),
+      preload: path$8.join(__dirname, "preload.mjs"),
       contextIsolation: true,
       nodeIntegration: false,
       devTools: true
@@ -75904,7 +75940,7 @@ function createWindow() {
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
-    win.loadFile(path$7.join(RENDERER_DIST, "index.html"));
+    win.loadFile(path$8.join(RENDERER_DIST, "index.html"));
   }
   win.webContents.openDevTools();
 }

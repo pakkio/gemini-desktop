@@ -3,7 +3,7 @@ import ChatHeader from './ChatHeader';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+import { post } from '../../utils/api_helper/api_helper';
 
 interface ChatMessage {
   role: 'user' | 'model' | 'system' | 'tool';
@@ -39,7 +39,8 @@ export default function ChatPage() {
 
     try {
       const historyForBackend = messages.filter(m => m.role === 'user' || m.role === 'model');
-      const { data } = await axios.post('http://localhost:5001/api/chat', {
+
+      const data = await post('/api/chat', {
         message: newUserMessage.parts[0].text,
         history: historyForBackend,
       });

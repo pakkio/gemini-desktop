@@ -1,13 +1,18 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
-const configPath = path.join(__dirname, "../data/servicesConfig.json");
+// Fix for __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const configPath = path.join(__dirname, "../src/backend/data/servicesConfig.json");
 
 export const saveServicesConfig = (req:any, res:any) => {
   try {
     const data = req.body;
     fs.writeFileSync(configPath, JSON.stringify(data, null, 2));
-    res.json({ success: true });
+    return res.json(data); // no need to parse since it's already an object
   } catch (err) {
     res.status(500).json({ error: "Failed to save config." });
   }
