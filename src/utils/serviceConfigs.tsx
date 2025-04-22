@@ -3,23 +3,23 @@ export const serviceConfigs = {
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-aws-kb-retrieval"],
       env: {
-        AWS_ACCESS_KEY_ID: "YOUR_ACCESS_KEY_HERE",
-        AWS_SECRET_ACCESS_KEY: "YOUR_SECRET_ACCESS_KEY_HERE",
-        AWS_REGION: "YOUR_AWS_REGION_HERE",
+        AWS_ACCESS_KEY_ID: "",
+        AWS_SECRET_ACCESS_KEY: "",
+        AWS_REGION: "",
       },
     },
     "brave-search": {
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-brave-search"],
       env: {
-        BRAVE_API_KEY: "YOUR_API_KEY_HERE",
+        BRAVE_API_KEY: "",
       },
     },
     "everart": {
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-everart"],
       env: {
-        EVERART_API_KEY: "your_key_here",
+        EVERART_API_KEY: "",
       },
     },
     "everything": {
@@ -39,7 +39,7 @@ export const serviceConfigs = {
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-github"],
       env: {
-        GITHUB_PERSONAL_ACCESS_TOKEN: "<YOUR_TOKEN>",
+        GITHUB_PERSONAL_ACCESS_TOKEN: "",
       },
     },
     "gdrive": {
@@ -50,7 +50,7 @@ export const serviceConfigs = {
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-google-maps"],
       env: {
-        GOOGLE_MAPS_API_KEY: "<YOUR_API_KEY>",
+        GOOGLE_MAPS_API_KEY: "",
       },
     },
     "postgres": {
@@ -73,9 +73,9 @@ export const serviceConfigs = {
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-slack"],
       env: {
-        SLACK_BOT_TOKEN: "xoxb-your-bot-token",
-        SLACK_TEAM_ID: "T01234567",
-        SLACK_CHANNEL_IDS: "C01234567, C76543210",
+        SLACK_BOT_TOKEN: "",
+        SLACK_TEAM_ID: "",
+        SLACK_CHANNEL_IDS: "",
       },
     },
     "memory": {
@@ -86,8 +86,8 @@ export const serviceConfigs = {
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-gitlab"],
       env: {
-        GITLAB_PERSONAL_ACCESS_TOKEN: ,
-        GITLAB_API_URL: "https://gitlab.com/api/v4",
+        GITLAB_PERSONAL_ACCESS_TOKEN: "",
+        GITLAB_API_URL: "",
       },
     },
   };

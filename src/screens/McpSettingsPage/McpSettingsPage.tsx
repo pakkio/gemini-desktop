@@ -5,6 +5,10 @@ import {
   Paper,
   Fade,
   Stack,
+  Modal,
+  TextField,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import { useNavigate } from "react-router-dom";
@@ -28,6 +32,7 @@ import {
   Code as CodeIcon,
   Search as SearchIcon,
   IntegrationInstructions as IntegrationInstructionsIcon,
+  WarningAmber as WarningAmberIcon,
 } from "@mui/icons-material";
 import { serviceConfigs } from "../../utils/serviceConfigs";
 
@@ -85,6 +90,87 @@ const defaultRightList: ServiceItem[] = Object.keys(iconMap).map((label) => {
 
 const initialLeftList: ServiceItem[] = [];
 
+function EnvWarningButtonWithModal({ item, onSave }: { item: ServiceItem; onSave: (updated: ServiceItem) => void }) {
+  const [open, setOpen] = useState(false);
+  const [fields, setFields] = useState<{ [key: string]: string }>({});
+
+  useEffect(() => {
+    console.log(item,"itemitemitemitem")
+    if (item.config.env) {
+      const emptyFields: any = {};
+      for (const key in item.config.env) {
+        if (!item.config.env[key]) {
+          emptyFields[key] = "";
+        }
+      }
+      setFields(emptyFields);
+    }
+  }, [item]);
+
+  const handleSave = () => {
+    const updatedItem = { ...item, config: { ...item.config, env: { ...item.config.env, ...fields } } };
+    onSave(updatedItem);
+    setOpen(false);
+    alert("Config updated successfully.");
+  };
+
+  const handleFieldChange = (key: string, value: string) => {
+    setFields((prev) => ({ ...prev, [key]: value }));
+  };
+
+  if (!item.config.env) return null;
+
+  const hasEmpty = Object.values(item.config.env).some((v: any) => v === "");
+  if (!hasEmpty) return null;
+
+  return (
+    <>
+      <Tooltip title="Configuration Required">
+        <IconButton
+          onClick={() => setOpen(true)}
+          sx={{ animation: "pulse 1.2s infinite", ml: 1 }}
+        >
+          <WarningAmberIcon color="warning" />
+        </IconButton>
+      </Tooltip>
+      <Modal open={open} onClose={() => setOpen(false)}>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 400,
+            bgcolor: "background.paper",
+            borderRadius: 2,
+            boxShadow: 24,
+            p: 4,
+          }}
+        >
+          <Typography variant="h6" gutterBottom>
+            Complete Config for {item.label}
+          </Typography>
+          {Object.keys(fields).map((key) => (
+            <TextField
+              key={key}
+              label={key}
+              fullWidth
+              margin="normal"
+              value={fields[key]}
+              onChange={(e) => handleFieldChange(key, e.target.value)}
+            />
+          ))}
+          <Stack mt={2} direction="row" justifyContent="flex-end">
+            <Button variant="contained" onClick={handleSave}>
+              Save
+            </Button>
+          </Stack>
+        </Box>
+      </Modal>
+    </>
+  );
+}
+
 export default function SettingsPage() {
   const navigate = useNavigate();
   const [leftList, setLeftList] = useState(initialLeftList);
@@ -121,8 +207,7 @@ export default function SettingsPage() {
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination } = result;
-    if (!destination || (source.droppableId === destination.droppableId &&
-      source.index === destination.index)) return;
+    if (!destination || (source.droppableId === destination.droppableId && source.index === destination.index)) return;
 
     const sourceList = [...(source.droppableId === "left" ? leftList : rightList)];
     const destList = [...(destination.droppableId === "left" ? leftList : rightList)];
@@ -139,13 +224,17 @@ export default function SettingsPage() {
     }
   };
 
+  const updateLeftItem = (updatedItem: ServiceItem) => {
+    setLeftList((prev) => prev.map((item) => item.key === updatedItem.key ? updatedItem : item));
+  };
+
   const renderList = (
     items: ServiceItem[],
     droppableId: string,
     color: string
   ) => {
     const isRightList = droppableId === "right";
-  
+
     return (
       <Droppable droppableId={droppableId}>
         {(provided) => (
@@ -161,9 +250,9 @@ export default function SettingsPage() {
               boxShadow: 3,
               display: isRightList ? "grid" : "flex",
               flexDirection: isRightList ? undefined : "column",
-              gap: isRightList ? 2 : 1.5, // spacing: 16px for right, 12px for left
+              gap: isRightList ? 2 : 1.5,
               ...(isRightList && {
-                gridTemplateColumns: "1fr 1fr", // 2 columns
+                gridTemplateColumns: "1fr 1fr",
               }),
             }}
           >
@@ -195,6 +284,9 @@ export default function SettingsPage() {
                       <Typography variant="body1" fontWeight={500}>
                         {item.label}
                       </Typography>
+                      {droppableId === "left" && (
+                        <EnvWarningButtonWithModal item={item} onSave={updateLeftItem} />
+                      )}
                     </Box>
                   </Fade>
                 )}
@@ -206,7 +298,6 @@ export default function SettingsPage() {
       </Droppable>
     );
   };
-  
 
   return (
     <Box p={4}>
@@ -238,16 +329,8 @@ export default function SettingsPage() {
         <Button variant="contained" color="primary" onClick={saveSettings}>
           Save Changes
         </Button>
-        <Button variant="outlined" onClick={() => navigate("/")}>
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          color="secondary"
-          onClick={() => navigate("/server-config")}
-        >
-          Configure New Server
-        </Button>
+        <Button variant="outlined" onClick={() => navigate("/")}>Cancel</Button>
+        <Button variant="contained" color="secondary" onClick={() => navigate("/server-config")}>Configure New Server</Button>
       </Stack>
     </Box>
   );

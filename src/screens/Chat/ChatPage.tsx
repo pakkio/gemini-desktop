@@ -81,12 +81,12 @@ export default function ChatPage() {
           },
         ]);
       }
-    } catch (err) {
+    } catch (err:{message:string}) {
       setMessages((prev) => [
         ...prev,
         {
           role: "system",
-          parts: [{ text: "Error: Failed to fetch response." }],
+          parts: [{ text: `Error: ${err?.response?.data?.error ||'Failed to fetch response.'}` }],
         },
       ]);
     } finally {
