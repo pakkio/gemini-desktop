@@ -25892,17 +25892,10 @@ var implementation$1 = function bind(that) {
 var implementation = implementation$1;
 var functionBind = Function.prototype.bind || implementation;
 var functionCall = Function.prototype.call;
-var functionApply;
-var hasRequiredFunctionApply;
-function requireFunctionApply() {
-  if (hasRequiredFunctionApply) return functionApply;
-  hasRequiredFunctionApply = 1;
-  functionApply = Function.prototype.apply;
-  return functionApply;
-}
+var functionApply = Function.prototype.apply;
 var reflectApply = typeof Reflect !== "undefined" && Reflect && Reflect.apply;
 var bind$2 = functionBind;
-var $apply$1 = requireFunctionApply();
+var $apply$1 = functionApply;
 var $call$2 = functionCall;
 var $reflectApply = reflectApply;
 var actualApply = $reflectApply || bind$2.call($call$2, $apply$1);
@@ -26022,7 +26015,7 @@ var hasSymbols = requireHasSymbols()();
 var getProto = requireGetProto();
 var $ObjectGPO = requireObject_getPrototypeOf();
 var $ReflectGPO = requireReflect_getPrototypeOf();
-var $apply = requireFunctionApply();
+var $apply = functionApply;
 var $call = functionCall;
 var needsEval = {};
 var TypedArray = typeof Uint8Array === "undefined" || !getProto ? undefined$1 : getProto(Uint8Array);
@@ -40582,7 +40575,7 @@ function onceStrict(fn) {
   return f;
 }
 var onceExports = once$1.exports;
-var router$2 = { exports: {} };
+var router$3 = { exports: {} };
 var isPromise$3 = { exports: {} };
 isPromise$3.exports = isPromise$2;
 isPromise$3.exports.default = isPromise$2;
@@ -41231,8 +41224,8 @@ const deprecate = depd_1("router");
 const slice = Array.prototype.slice;
 const flatten = Array.prototype.flat;
 const methods = METHODS.map((method) => method.toLowerCase());
-router$2.exports = Router;
-router$2.exports.Route = Route;
+router$3.exports = Router;
+router$3.exports.Route = Route;
 function Router(options) {
   if (!(this instanceof Router)) {
     return new Router(options);
@@ -41612,7 +41605,7 @@ function wrap(old, fn) {
     fn.apply(this, args);
   };
 }
-var routerExports = router$2.exports;
+var routerExports = router$3.exports;
 (function(module, exports) {
   /*!
    * express
@@ -68487,11 +68480,9 @@ const saveServicesConfig = (req2, res2) => {
     res2.status(500).json({ error: "Failed to save config." });
   }
 };
-const router$1 = express.Router();
-router$1.get("/get", getServicesConfig);
-router$1.post("/save", saveServicesConfig);
-const router = express$1.Router();
-router.use("/services", router$1);
+const router$2 = express.Router();
+router$2.get("/get", getServicesConfig);
+router$2.post("/save", saveServicesConfig);
 var SchemaType;
 (function(SchemaType2) {
   SchemaType2["STRING"] = "string";
@@ -69721,6 +69712,102 @@ class GoogleGenerativeAI {
     const modelParamsFromCache = Object.assign(Object.assign({}, modelParams), { model: cachedContent.model, tools: cachedContent.tools, toolConfig: cachedContent.toolConfig, systemInstruction: cachedContent.systemInstruction, cachedContent });
     return new GenerativeModel(this.apiKey, modelParamsFromCache, requestOptions);
   }
+}
+function convertMcpSchemaToGeminiSchema(mcpSchema) {
+  const properties = {};
+  if (mcpSchema == null ? void 0 : mcpSchema.properties) {
+    for (const key in mcpSchema.properties) {
+      if (Object.prototype.hasOwnProperty.call(mcpSchema.properties, key)) {
+        const prop = mcpSchema.properties[key];
+        let geminiType;
+        let geminiPropertyDefinition = { description: prop.description || "" };
+        switch (prop.type) {
+          case "string":
+          case "number":
+          case "integer":
+          case "boolean":
+            geminiType = SchemaType[prop.type.toUpperCase()] || SchemaType.STRING;
+            geminiPropertyDefinition.type = geminiType;
+            break;
+          case "object":
+            geminiType = SchemaType.OBJECT;
+            geminiPropertyDefinition.type = geminiType;
+            if (prop.properties) {
+              const nestedSchema = convertMcpSchemaToGeminiSchema({
+                properties: prop.properties,
+                required: prop.required
+              });
+              geminiPropertyDefinition.properties = (nestedSchema == null ? void 0 : nestedSchema.properties) ?? {};
+              geminiPropertyDefinition.required = (nestedSchema == null ? void 0 : nestedSchema.required) ?? [];
+            } else {
+              geminiPropertyDefinition.properties = {};
+              geminiPropertyDefinition.required = [];
+            }
+            break;
+          case "array":
+            geminiType = SchemaType.ARRAY;
+            geminiPropertyDefinition.type = geminiType;
+            if (prop.items) {
+              let itemType = prop.items.type;
+              let geminiItemType;
+              let itemDefinition = {};
+              switch (itemType) {
+                case "string":
+                  geminiItemType = SchemaType.STRING;
+                  itemDefinition.type = geminiItemType;
+                  break;
+                case "number":
+                  geminiItemType = SchemaType.NUMBER;
+                  itemDefinition.type = geminiItemType;
+                  break;
+                case "integer":
+                  geminiItemType = SchemaType.INTEGER;
+                  itemDefinition.type = geminiItemType;
+                  break;
+                case "boolean":
+                  geminiItemType = SchemaType.BOOLEAN;
+                  itemDefinition.type = geminiItemType;
+                  break;
+                case "object":
+                  geminiItemType = SchemaType.OBJECT;
+                  itemDefinition.type = geminiItemType;
+                  if (typeof prop.items === "object" && "properties" in prop.items && prop.items.properties) {
+                    const nestedItemSchema = convertMcpSchemaToGeminiSchema({
+                      properties: prop.items.properties,
+                      // Safe to access now
+                      required: prop.items.required
+                      // Safe to access now
+                    });
+                    itemDefinition.properties = (nestedItemSchema == null ? void 0 : nestedItemSchema.properties) ?? {};
+                    itemDefinition.required = (nestedItemSchema == null ? void 0 : nestedItemSchema.required) ?? [];
+                  } else {
+                    itemDefinition.properties = {};
+                    itemDefinition.required = [];
+                  }
+                  break;
+                default:
+                  geminiItemType = SchemaType.STRING;
+                  itemDefinition.type = geminiItemType;
+              }
+              geminiPropertyDefinition.items = itemDefinition;
+            } else {
+              console.warn(`⚠️ MCP tool property "${key}" is type 'array' but missing 'items' definition. Defaulting items to STRING for Gemini.`);
+              geminiPropertyDefinition.items = { type: SchemaType.STRING };
+            }
+            break;
+          default:
+            geminiType = SchemaType.STRING;
+            geminiPropertyDefinition.type = geminiType;
+        }
+        properties[key] = geminiPropertyDefinition;
+      }
+    }
+  }
+  return {
+    type: SchemaType.OBJECT,
+    properties,
+    required: (mcpSchema == null ? void 0 : mcpSchema.required) || []
+  };
 }
 var util;
 (function(util2) {
@@ -75615,12 +75702,233 @@ class StdioClientTransport {
 function isElectron() {
   return "type" in process$1;
 }
+const mcpClients = /* @__PURE__ */ new Map();
+const toolToServerMap = /* @__PURE__ */ new Map();
+let allMcpTools = [];
+let allGeminiTools = [];
+async function connectToMcpServers() {
+  const __filename2 = fileURLToPath(import.meta.url);
+  const __dirname2 = path$7.dirname(__filename2);
+  const configPath2 = path$7.join(
+    __dirname2,
+    "../src/backend/data/servicesConfig.json"
+  );
+  const data = require$$0$9.readFileSync(configPath2, "utf-8");
+  if (!data) {
+    return { allGeminiTools, mcpClients };
+  }
+  const parsedConfig = JSON.parse(data);
+  const serverConfigs = (parsedConfig == null ? void 0 : parsedConfig.leftList) || [];
+  console.log(serverConfigs, "serveconfig");
+  mcpClients.clear();
+  toolToServerMap.clear();
+  allMcpTools = [];
+  allGeminiTools = [];
+  const connectionPromises = serverConfigs.map(
+    async (serverConfig) => {
+      if (!serverConfig.config.command || !Array.isArray(serverConfig.config.args)) {
+        console.error(
+          `❌ Invalid configuration for server "${serverConfig.label}": Missing 'command' or 'args'. Skipping.`
+        );
+        return;
+      }
+      console.log(
+        `Attempting to connect to MCP server "${serverConfig.label}"...`
+      );
+      try {
+        const nodeExecutablePath = process.execPath;
+        const nodeDir = path$7.dirname(nodeExecutablePath);
+        const currentPath = process.env.PATH || "";
+        const effectivePath = `${nodeDir}${path$7.delimiter}${currentPath}`;
+        const childEnv = {
+          ...process.env,
+          // Inherit parent environment
+          ...serverConfig.config.env || {},
+          // Add environment vars from config
+          PATH: effectivePath
+          // Override PATH to include node dir
+        };
+        const params = {
+          command: serverConfig.config.command,
+          // Should still be the absolute path to npx here
+          args: serverConfig.config.args,
+          // --- Use the constructed environment ---
+          env: childEnv
+          // cwd: serverConfig.cwd || undefined // Optional: Set working directory
+        };
+        const transport = new StdioClientTransport(params);
+        const client = new Client({
+          name: `mcp-gemini-backend-${serverConfig.key}`,
+          version: "1.0.0"
+        });
+        client.connect(transport);
+        mcpClients.set(serverConfig.key, client);
+        const toolsResult = await client.listTools();
+        const currentServerTools = toolsResult.tools;
+        console.log(
+          `✅ Connected to "${serverConfig.key}" with tools: ${currentServerTools.map((t) => t.name).join(", ")}`
+        );
+        currentServerTools.forEach((tool) => {
+          if (toolToServerMap.has(tool.name)) {
+            console.warn(
+              `⚠️ Tool name conflict: Tool "${tool.name}" from server "${serverConfig.key}" overrides the same tool from server "${toolToServerMap.get(
+                tool.name
+              )}".`
+            );
+          }
+          allMcpTools.push(tool);
+          toolToServerMap.set(tool.name, serverConfig.key);
+        });
+      } catch (e) {
+        console.error(
+          `❌ Failed to connect to MCP server "${serverConfig.key}": `,
+          e.message
+        );
+        if (mcpClients.has(serverConfig.key)) {
+          mcpClients.delete(serverConfig.key);
+        }
+      }
+    }
+  );
+  await Promise.all(connectionPromises);
+  if (allMcpTools.length > 0) {
+    allGeminiTools = allMcpTools.map((tool) => ({
+      name: tool.name,
+      description: tool.description || "No description provided",
+      parameters: convertMcpSchemaToGeminiSchema(tool.inputSchema)
+    }));
+    console.log(
+      `🔌 Total ${allMcpTools.length} MCP tools aggregated for Gemini.`
+    );
+    return { allGeminiTools, mcpClients };
+  } else {
+    console.warn("⚠️ No MCP tools were successfully loaded from any server.");
+    return { allGeminiTools, mcpClients };
+  }
+}
+dotenv.config();
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+if (!GEMINI_API_KEY) {
+  throw new Error("GEMINI_API_KEY is not set in .env file");
+}
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are a powerful assistant who have access to various tools , so you carefully checks what the user wants and check if you have any tool suitable for the answer available at your end. if yes make a call to that tool and send response to the user" });
+const chatWithLLM = async (req2, res2) => {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i;
+  try {
+    const toolToServerMap2 = /* @__PURE__ */ new Map();
+    const { message, history } = req2.body;
+    if (!message) {
+      res2.status(400).json({ error: "Message is required" });
+      return;
+    }
+    const { allGeminiTools: allGeminiTools2, mcpClients: mcpClients2 } = await connectToMcpServers();
+    if (mcpClients2.size === 0) {
+      res2.status(503).json({ error: "No MCP Servers are connected" });
+      return;
+    }
+    const chat = geminiModel.startChat({
+      history: history || [],
+      // Use the aggregated gemini tools list
+      tools: allGeminiTools2.length > 0 ? [{ functionDeclarations: allGeminiTools2 }] : void 0
+    });
+    let result = await chat.sendMessage(message);
+    let response2 = result.response;
+    let currentContent = (_b = (_a = response2 == null ? void 0 : response2.candidates) == null ? void 0 : _a[0]) == null ? void 0 : _b.content;
+    let functionCallsToProcess = (_c = currentContent == null ? void 0 : currentContent.parts) == null ? void 0 : _c.filter((part) => !!part.functionCall).map((part) => part.functionCall);
+    while (functionCallsToProcess && functionCallsToProcess.length > 0) {
+      console.log(
+        `Gemini requested ${functionCallsToProcess.length} tool call(s):`,
+        functionCallsToProcess.map((c) => c.name)
+      );
+      const functionResponses = [];
+      for (const call of functionCallsToProcess) {
+        const toolName = call.name;
+        const toolArgs = call.args;
+        const serverKey = toolToServerMap2.get(toolName);
+        const targetClient = serverKey ? mcpClients2.get(serverKey) : void 0;
+        if (!targetClient) {
+          console.error(
+            `❌ Tool "${toolName}" requested by Gemini, but no connected MCP client provides it or the client is down.`
+          );
+          functionResponses.push({
+            functionResponse: {
+              name: toolName,
+              response: {
+                content: `Error: Tool "${toolName}" is not available or the corresponding server is down.`
+              }
+            }
+          });
+          continue;
+        }
+        console.log(
+          `Calling MCP tool "${toolName}" via server "${serverKey}" with args:`,
+          toolArgs
+        );
+        try {
+          const mcpToolResult = await targetClient.callTool({
+            name: toolName,
+            arguments: toolArgs
+          });
+          console.log(`MCP Tool "${toolName}" response:`, mcpToolResult);
+          functionResponses.push({
+            functionResponse: {
+              name: toolName,
+              response: {
+                content: typeof mcpToolResult.content === "string" ? mcpToolResult.content : JSON.stringify(mcpToolResult.content) || "Tool executed successfully."
+              }
+            }
+          });
+        } catch (toolError) {
+          console.error(
+            `Error calling MCP tool "${toolName}" via server "${serverKey}":`,
+            toolError
+          );
+          functionResponses.push({
+            functionResponse: {
+              name: toolName,
+              response: {
+                content: `Error executing tool ${toolName}: ${toolError.message || "Unknown error"}`
+              }
+            }
+          });
+        }
+      }
+      console.log(
+        "Sending tool responses back to Gemini:",
+        JSON.stringify(functionResponses)
+      );
+      result = await chat.sendMessage(functionResponses);
+      response2 = result.response;
+      currentContent = (_e = (_d = response2 == null ? void 0 : response2.candidates) == null ? void 0 : _d[0]) == null ? void 0 : _e.content;
+      functionCallsToProcess = (_f = currentContent == null ? void 0 : currentContent.parts) == null ? void 0 : _f.filter((part) => !!part.functionCall).map((part) => part.functionCall);
+    }
+    let finalAnswer = "Sorry, I could not generate a text response.";
+    if ((_i = (_h = (_g = response2 == null ? void 0 : response2.candidates) == null ? void 0 : _g[0]) == null ? void 0 : _h.content) == null ? void 0 : _i.parts) {
+      const textParts = response2.candidates[0].content.parts.filter((part) => typeof part.text === "string").map((part) => part.text);
+      if (textParts.length > 0) {
+        finalAnswer = textParts.join("");
+      }
+    }
+    console.log("Final Gemini response:", finalAnswer);
+    const finalHistory = await chat.getHistory();
+    res2.json({ reply: finalAnswer, history: finalHistory });
+  } catch (err) {
+    console.log(err);
+    res2.status(500).json({ error: "Failed to read config." });
+  }
+};
+const router$1 = express.Router();
+router$1.post("/", chatWithLLM);
+const router = express$1.Router();
+router.use("/services", router$2);
+router.use("/chat", router$1);
 dotenv.config();
 function startServer() {
   const PORT = process.env.PORT || 5001;
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  const GEMINI_API_KEY2 = process.env.GEMINI_API_KEY;
   const MCP_CONFIG_PATH = process.env.MCP_CONFIG_PATH;
-  if (!GEMINI_API_KEY) {
+  if (!GEMINI_API_KEY2) {
     throw new Error("GEMINI_API_KEY is not set in .env file");
   }
   if (!MCP_CONFIG_PATH) {
@@ -75631,282 +75939,22 @@ function startServer() {
     origin: "http://localhost:5173"
   }));
   app2.use(express$1.json());
-  const mcpClients = /* @__PURE__ */ new Map();
-  const toolToServerMap = /* @__PURE__ */ new Map();
-  let allMcpTools = [];
-  let allGeminiTools = [];
+  const mcpClients2 = /* @__PURE__ */ new Map();
   const __filename2 = fileURLToPath(import.meta.url);
   const __dirname2 = path$7.dirname(__filename2);
-  const absoluteConfigPath = path$7.resolve(__dirname2, MCP_CONFIG_PATH);
-  function convertMcpSchemaToGeminiSchema(mcpSchema) {
-    const properties = {};
-    if (mcpSchema == null ? void 0 : mcpSchema.properties) {
-      for (const key in mcpSchema.properties) {
-        if (Object.prototype.hasOwnProperty.call(mcpSchema.properties, key)) {
-          const prop = mcpSchema.properties[key];
-          let geminiType;
-          let geminiPropertyDefinition = { description: prop.description || "" };
-          switch (prop.type) {
-            case "string":
-            case "number":
-            case "integer":
-            case "boolean":
-              geminiType = SchemaType[prop.type.toUpperCase()] || SchemaType.STRING;
-              geminiPropertyDefinition.type = geminiType;
-              break;
-            case "object":
-              geminiType = SchemaType.OBJECT;
-              geminiPropertyDefinition.type = geminiType;
-              if (prop.properties) {
-                const nestedSchema = convertMcpSchemaToGeminiSchema({
-                  properties: prop.properties,
-                  required: prop.required
-                });
-                geminiPropertyDefinition.properties = (nestedSchema == null ? void 0 : nestedSchema.properties) ?? {};
-                geminiPropertyDefinition.required = (nestedSchema == null ? void 0 : nestedSchema.required) ?? [];
-              } else {
-                geminiPropertyDefinition.properties = {};
-                geminiPropertyDefinition.required = [];
-              }
-              break;
-            case "array":
-              geminiType = SchemaType.ARRAY;
-              geminiPropertyDefinition.type = geminiType;
-              if (prop.items) {
-                let itemType = prop.items.type;
-                let geminiItemType;
-                let itemDefinition = {};
-                switch (itemType) {
-                  case "string":
-                    geminiItemType = SchemaType.STRING;
-                    itemDefinition.type = geminiItemType;
-                    break;
-                  case "number":
-                    geminiItemType = SchemaType.NUMBER;
-                    itemDefinition.type = geminiItemType;
-                    break;
-                  case "integer":
-                    geminiItemType = SchemaType.INTEGER;
-                    itemDefinition.type = geminiItemType;
-                    break;
-                  case "boolean":
-                    geminiItemType = SchemaType.BOOLEAN;
-                    itemDefinition.type = geminiItemType;
-                    break;
-                  case "object":
-                    geminiItemType = SchemaType.OBJECT;
-                    itemDefinition.type = geminiItemType;
-                    if (typeof prop.items === "object" && "properties" in prop.items && prop.items.properties) {
-                      const nestedItemSchema = convertMcpSchemaToGeminiSchema({
-                        properties: prop.items.properties,
-                        // Safe to access now
-                        required: prop.items.required
-                        // Safe to access now
-                      });
-                      itemDefinition.properties = (nestedItemSchema == null ? void 0 : nestedItemSchema.properties) ?? {};
-                      itemDefinition.required = (nestedItemSchema == null ? void 0 : nestedItemSchema.required) ?? [];
-                    } else {
-                      itemDefinition.properties = {};
-                      itemDefinition.required = [];
-                    }
-                    break;
-                  default:
-                    geminiItemType = SchemaType.STRING;
-                    itemDefinition.type = geminiItemType;
-                }
-                geminiPropertyDefinition.items = itemDefinition;
-              } else {
-                console.warn(`⚠️ MCP tool property "${key}" is type 'array' but missing 'items' definition. Defaulting items to STRING for Gemini.`);
-                geminiPropertyDefinition.items = { type: SchemaType.STRING };
-              }
-              break;
-            default:
-              geminiType = SchemaType.STRING;
-              geminiPropertyDefinition.type = geminiType;
-          }
-          properties[key] = geminiPropertyDefinition;
-        }
-      }
-    }
-    return {
-      type: SchemaType.OBJECT,
-      properties,
-      required: (mcpSchema == null ? void 0 : mcpSchema.required) || []
-    };
-  }
-  async function connectToMcpServers() {
-    console.log(`Reading MCP server configuration from: ${absoluteConfigPath}`);
-    let configJson;
-    try {
-      const configFileContent = require$$0$9.readFileSync(absoluteConfigPath, "utf-8");
-      configJson = JSON.parse(configFileContent);
-    } catch (err) {
-      console.error(`❌ Error reading or parsing MCP config file at ${absoluteConfigPath}: ${err.message}`);
-      return;
-    }
-    if (!configJson || !configJson.mcpServers || typeof configJson.mcpServers !== "object") {
-      console.error(`❌ Invalid MCP config file structure. Missing 'mcpServers' object.`);
-      return;
-    }
-    const serverConfigs = configJson.mcpServers;
-    const serverKeys = Object.keys(serverConfigs);
-    console.log(`Found ${serverKeys.length} MCP server configurations: ${serverKeys.join(", ")}`);
-    mcpClients.clear();
-    toolToServerMap.clear();
-    allMcpTools = [];
-    allGeminiTools = [];
-    const connectionPromises = serverKeys.map(async (serverKey) => {
-      const serverConfig = serverConfigs[serverKey];
-      if (!serverConfig.command || !Array.isArray(serverConfig.args)) {
-        console.error(`❌ Invalid configuration for server "${serverKey}": Missing 'command' or 'args'. Skipping.`);
-        return;
-      }
-      console.log(`Attempting to connect to MCP server "${serverKey}"...`);
-      try {
-        const nodeExecutablePath = process.execPath;
-        const nodeDir = path$7.dirname(nodeExecutablePath);
-        const currentPath = process.env.PATH || "";
-        const effectivePath = `${nodeDir}${path$7.delimiter}${currentPath}`;
-        const childEnv = {
-          ...process.env,
-          // Inherit parent environment
-          ...serverConfig.env || {},
-          // Add environment vars from config
-          PATH: effectivePath
-          // Override PATH to include node dir
-        };
-        const params = {
-          command: serverConfig.command,
-          // Should still be the absolute path to npx here
-          args: serverConfig.args,
-          // --- Use the constructed environment ---
-          env: childEnv
-          // cwd: serverConfig.cwd || undefined // Optional: Set working directory
-        };
-        const transport = new StdioClientTransport(params);
-        const client = new Client({ name: `mcp-gemini-backend-${serverKey}`, version: "1.0.0" });
-        client.connect(transport);
-        mcpClients.set(serverKey, client);
-        const toolsResult = await client.listTools();
-        const currentServerTools = toolsResult.tools;
-        console.log(`✅ Connected to "${serverKey}" with tools: ${currentServerTools.map((t) => t.name).join(", ")}`);
-        currentServerTools.forEach((tool) => {
-          if (toolToServerMap.has(tool.name)) {
-            console.warn(`⚠️ Tool name conflict: Tool "${tool.name}" from server "${serverKey}" overrides the same tool from server "${toolToServerMap.get(tool.name)}".`);
-          }
-          allMcpTools.push(tool);
-          toolToServerMap.set(tool.name, serverKey);
-        });
-      } catch (e) {
-        console.error(`❌ Failed to connect to MCP server "${serverKey}": `, e.message);
-        if (mcpClients.has(serverKey)) {
-          mcpClients.delete(serverKey);
-        }
-      }
-    });
-    await Promise.all(connectionPromises);
-    if (allMcpTools.length > 0) {
-      allGeminiTools = allMcpTools.map((tool) => ({
-        name: tool.name,
-        description: tool.description || "No description provided",
-        parameters: convertMcpSchemaToGeminiSchema(tool.inputSchema)
-      }));
-      console.log(`🔌 Total ${allMcpTools.length} MCP tools aggregated for Gemini.`);
-    } else {
-      console.warn("⚠️ No MCP tools were successfully loaded from any server.");
-    }
-  }
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are a powerful assistant who have access to various tools , so you carefully checks what the user wants and check if you have any tool suitable for the answer available at your end. if yes make a call to that tool and send response to the user" });
-  app2.post("/api/chat", async (req2, res2) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i;
-    const { message, history } = req2.body;
-    if (!message) {
-      res2.status(400).json({ error: "Message is required" });
-      return;
-    }
-    if (mcpClients.size === 0) {
-      res2.status(503).json({ error: "No MCP Servers are connected" });
-      return;
-    }
-    try {
-      console.log(`Received query: ${message}`);
-      console.log("Available Gemini tools (aggregated):", JSON.stringify(allGeminiTools, null, 2));
-      const chat = geminiModel.startChat({
-        history: history || [],
-        // Use the aggregated gemini tools list
-        tools: allGeminiTools.length > 0 ? [{ functionDeclarations: allGeminiTools }] : void 0
-      });
-      let result = await chat.sendMessage(message);
-      let response2 = result.response;
-      let currentContent = (_b = (_a = response2 == null ? void 0 : response2.candidates) == null ? void 0 : _a[0]) == null ? void 0 : _b.content;
-      let functionCallsToProcess = (_c = currentContent == null ? void 0 : currentContent.parts) == null ? void 0 : _c.filter((part) => !!part.functionCall).map((part) => part.functionCall);
-      while (functionCallsToProcess && functionCallsToProcess.length > 0) {
-        console.log(`Gemini requested ${functionCallsToProcess.length} tool call(s):`, functionCallsToProcess.map((c) => c.name));
-        const functionResponses = [];
-        for (const call of functionCallsToProcess) {
-          const toolName = call.name;
-          const toolArgs = call.args;
-          const serverKey = toolToServerMap.get(toolName);
-          const targetClient = serverKey ? mcpClients.get(serverKey) : void 0;
-          if (!targetClient) {
-            console.error(`❌ Tool "${toolName}" requested by Gemini, but no connected MCP client provides it or the client is down.`);
-            functionResponses.push({
-              functionResponse: { name: toolName, response: { content: `Error: Tool "${toolName}" is not available or the corresponding server is down.` } }
-            });
-            continue;
-          }
-          console.log(`Calling MCP tool "${toolName}" via server "${serverKey}" with args:`, toolArgs);
-          try {
-            const mcpToolResult = await targetClient.callTool({
-              name: toolName,
-              arguments: toolArgs
-            });
-            console.log(`MCP Tool "${toolName}" response:`, mcpToolResult);
-            functionResponses.push({
-              functionResponse: { name: toolName, response: { content: typeof mcpToolResult.content === "string" ? mcpToolResult.content : JSON.stringify(mcpToolResult.content) || "Tool executed successfully." } }
-            });
-          } catch (toolError) {
-            console.error(`Error calling MCP tool "${toolName}" via server "${serverKey}":`, toolError);
-            functionResponses.push({
-              functionResponse: { name: toolName, response: { content: `Error executing tool ${toolName}: ${toolError.message || "Unknown error"}` } }
-            });
-          }
-        }
-        console.log("Sending tool responses back to Gemini:", JSON.stringify(functionResponses));
-        result = await chat.sendMessage(functionResponses);
-        response2 = result.response;
-        currentContent = (_e = (_d = response2 == null ? void 0 : response2.candidates) == null ? void 0 : _d[0]) == null ? void 0 : _e.content;
-        functionCallsToProcess = (_f = currentContent == null ? void 0 : currentContent.parts) == null ? void 0 : _f.filter((part) => !!part.functionCall).map((part) => part.functionCall);
-      }
-      let finalAnswer = "Sorry, I could not generate a text response.";
-      if ((_i = (_h = (_g = response2 == null ? void 0 : response2.candidates) == null ? void 0 : _g[0]) == null ? void 0 : _h.content) == null ? void 0 : _i.parts) {
-        const textParts = response2.candidates[0].content.parts.filter((part) => typeof part.text === "string").map((part) => part.text);
-        if (textParts.length > 0) {
-          finalAnswer = textParts.join("");
-        }
-      }
-      console.log("Final Gemini response:", finalAnswer);
-      const finalHistory = await chat.getHistory();
-      res2.json({ reply: finalAnswer, history: finalHistory });
-    } catch (error2) {
-      console.error("Error processing chat:", error2);
-      if (!res2.headersSent) {
-        res2.status(500).json({ error: "Failed to process chat message", details: error2.message });
-      }
-    }
-  });
+  path$7.resolve(__dirname2, MCP_CONFIG_PATH);
+  const genAI2 = new GoogleGenerativeAI(GEMINI_API_KEY2);
+  genAI2.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are a powerful assistant who have access to various tools , so you carefully checks what the user wants and check if you have any tool suitable for the answer available at your end. if yes make a call to that tool and send response to the user" });
   app2.use("/api", router);
   app2.listen(PORT, async () => {
     console.log(`🚀 Backend server running on http://localhost:${PORT}`);
-    await connectToMcpServers();
   });
   process.on("SIGINT", async () => {
     console.log("Shutting down...");
     const closingPromises = [];
-    if (mcpClients.size > 0) {
-      console.log(`Closing ${mcpClients.size} MCP client connections...`);
-      for (const client of mcpClients.values()) {
+    if (mcpClients2.size > 0) {
+      console.log(`Closing ${mcpClients2.size} MCP client connections...`);
+      for (const client of mcpClients2.values()) {
         closingPromises.push(client.close().catch((e) => console.error("Error closing MCP client:", e.message)));
       }
       await Promise.all(closingPromises);

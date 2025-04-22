@@ -1,9 +1,8 @@
 import { Router } from 'express';
-import { getServicesConfig } from '../../controllers/serviceController/getServicesConfig';
-import { saveServicesConfig } from '../../controllers/serviceController/saveServicesConfig';
+import { chatWithLLM } from '../../controllers/llmChat/chatLLM';
 
 const router = Router();
 
-router.post("/", getServicesConfig);
+router.post("/", chatWithLLM);
 
 export default router;

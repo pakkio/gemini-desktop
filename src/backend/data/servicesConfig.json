@@ -1,6 +1,34 @@
 {
   "leftList": [
     {
+      "label": "Everything",
+      "key": "everything",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-everything"
+        ]
+      }
+    },
+    {
+      "label": "GitLab",
+      "key": "gitlab",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-gitlab"
+        ],
+        "env": {
+          "GITLAB_PERSONAL_ACCESS_TOKEN": ,
+          "GITLAB_API_URL": "https://gitlab.com/api/v4"
+        }
+      }
+    }
+  ],
+  "rightList": [
+    {
       "label": "AWS KB Retrieval",
       "key": "aws-kb-retrieval",
       "config": {
@@ -29,9 +57,7 @@
           "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"
         }
       }
-    }
-  ],
-  "rightList": [
+    },
     {
       "label": "Brave Search",
       "key": "brave-search",
@@ -82,25 +108,6 @@
           "-y",
           "@modelcontextprotocol/server-everything"
         ]
-      }
-    },
-    {
-      "label": "Git",
-      "config": {}
-    },
-    {
-      "label": "GitLab",
-      "key": "gitlab",
-      "config": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-gitlab"
-        ],
-        "env": {
-          "GITLAB_PERSONAL_ACCESS_TOKEN": ,
-          "GITLAB_API_URL": "https://gitlab.com/api/v4"
-        }
       }
     },
     {
