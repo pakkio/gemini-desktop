@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 const configPath = path.join(__dirname, "../src/backend/configurations/mcpServicesConfig.json");
 
-export const getServicesConfig = (req:any, res:any) => {
+export const getServicesConfig = (_:any, res:any) => {
   try {
     const data = fs.readFileSync(configPath, "utf-8");
     if (!data) {

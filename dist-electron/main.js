@@ -25892,10 +25892,17 @@ var implementation$1 = function bind(that) {
 var implementation = implementation$1;
 var functionBind = Function.prototype.bind || implementation;
 var functionCall = Function.prototype.call;
-var functionApply = Function.prototype.apply;
+var functionApply;
+var hasRequiredFunctionApply;
+function requireFunctionApply() {
+  if (hasRequiredFunctionApply) return functionApply;
+  hasRequiredFunctionApply = 1;
+  functionApply = Function.prototype.apply;
+  return functionApply;
+}
 var reflectApply = typeof Reflect !== "undefined" && Reflect && Reflect.apply;
 var bind$2 = functionBind;
-var $apply$1 = functionApply;
+var $apply$1 = requireFunctionApply();
 var $call$2 = functionCall;
 var $reflectApply = reflectApply;
 var actualApply = $reflectApply || bind$2.call($call$2, $apply$1);
@@ -26015,7 +26022,7 @@ var hasSymbols = requireHasSymbols()();
 var getProto = requireGetProto();
 var $ObjectGPO = requireObject_getPrototypeOf();
 var $ReflectGPO = requireReflect_getPrototypeOf();
-var $apply = functionApply;
+var $apply = requireFunctionApply();
 var $call = functionCall;
 var needsEval = {};
 var TypedArray = typeof Uint8Array === "undefined" || !getProto ? undefined$1 : getProto(Uint8Array);
@@ -68455,8 +68462,8 @@ var mainExports = main.exports;
 const dotenv = /* @__PURE__ */ getDefaultExportFromCjs(mainExports);
 const __filename$1 = fileURLToPath(import.meta.url);
 const __dirname$2 = path$7.dirname(__filename$1);
-const configPath$1 = path$7.join(__dirname$2, "../src/backend/data/servicesConfig.json");
-const getServicesConfig = (req2, res2) => {
+const configPath$1 = path$7.join(__dirname$2, "../src/backend/configurations/mcpServicesConfig.json");
+const getServicesConfig = (_, res2) => {
   try {
     const data = require$$0$9.readFileSync(configPath$1, "utf-8");
     if (!data) {
@@ -68470,7 +68477,7 @@ const getServicesConfig = (req2, res2) => {
 };
 const __filename = fileURLToPath(import.meta.url);
 const __dirname$1 = path$7.dirname(__filename);
-const configPath = path$7.join(__dirname$1, "../src/backend/data/servicesConfig.json");
+const configPath = path$7.join(__dirname$1, "../src/backend/configurations/mcpServicesConfig.json");
 const saveServicesConfig = (req2, res2) => {
   try {
     const data = req2.body;
@@ -75711,7 +75718,7 @@ async function connectToMcpServers() {
   const __dirname2 = path$7.dirname(__filename2);
   const configPath2 = path$7.join(
     __dirname2,
-    "../src/backend/data/servicesConfig.json"
+    "../src/backend/configurations/mcpServicesConfig.json"
   );
   const data = require$$0$9.readFileSync(configPath2, "utf-8");
   if (!data) {
@@ -75926,41 +75933,16 @@ router.use("/chat", router$1);
 dotenv.config();
 function startServer() {
   const PORT = process.env.PORT || 5001;
-  const GEMINI_API_KEY2 = process.env.GEMINI_API_KEY;
-  const MCP_CONFIG_PATH = process.env.MCP_CONFIG_PATH;
-  if (!GEMINI_API_KEY2) {
-    throw new Error("GEMINI_API_KEY is not set in .env file");
-  }
-  if (!MCP_CONFIG_PATH) {
-    throw new Error("MCP_CONFIG_PATH is not set in .env file (should point to mcp-client-config.json)");
-  }
   const app2 = express$1();
-  app2.use(cors({
-    origin: "http://localhost:5173"
-  }));
+  app2.use(
+    cors({
+      origin: "http://localhost:5173"
+    })
+  );
   app2.use(express$1.json());
-  const mcpClients2 = /* @__PURE__ */ new Map();
-  const __filename2 = fileURLToPath(import.meta.url);
-  const __dirname2 = path$7.dirname(__filename2);
-  path$7.resolve(__dirname2, MCP_CONFIG_PATH);
-  const genAI2 = new GoogleGenerativeAI(GEMINI_API_KEY2);
-  genAI2.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: "You are a powerful assistant who have access to various tools , so you carefully checks what the user wants and check if you have any tool suitable for the answer available at your end. if yes make a call to that tool and send response to the user" });
   app2.use("/api", router);
   app2.listen(PORT, async () => {
     console.log(`🚀 Backend server running on http://localhost:${PORT}`);
-  });
-  process.on("SIGINT", async () => {
-    console.log("Shutting down...");
-    const closingPromises = [];
-    if (mcpClients2.size > 0) {
-      console.log(`Closing ${mcpClients2.size} MCP client connections...`);
-      for (const client of mcpClients2.values()) {
-        closingPromises.push(client.close().catch((e) => console.error("Error closing MCP client:", e.message)));
-      }
-      await Promise.all(closingPromises);
-      console.log("All MCP Clients closed (or attempted to close).");
-    }
-    process.exit(0);
   });
 }
 createRequire(import.meta.url);

@@ -1,6 +1,6 @@
 
 import express from 'express';
-import serviceRoutes from './serviceConfig/serviceConfig.ts';
+import serviceRoutes from './mcpServiceConfig/mcpServiceConfig.ts';
 import llmRoutes from './llmChat/llmChat.ts';
 
 const router = express.Router();
