@@ -17,7 +17,7 @@ export const chatWithLLM = async (req: any, res: any) => {
     }
     const { allGeminiTools, mcpClients } = await connectToMcpServers();
     if (mcpClients.size === 0) {
-      res.status(503).json({ error: "No MCP Servers are connected" });
+      res.status(503).json({ error: "No MCP Servers are connected",allGeminiTools, mcpClients });
       return;
     }
     const geminiModel = await initializeAndGetModel();

@@ -1,19 +1,29 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { app } from "electron";
 
-// Fix for __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const configPath = path.join(__dirname, "../src/backend/configurations/mcpServicesConfig.json");
+const isDev = process.env.NODE_ENV === "development";
+const configPath = isDev
+  ? path.join(__dirname, "../src/backend/configurations/mcpServicesConfig.json")
+  : path.join(app.getPath("userData"), "mcpServicesConfig.json");
 
-export const saveServicesConfig = (req:any, res:any) => {
+export const saveServicesConfig = (req: any, res: any) => {
   try {
     const data = req.body;
+
+    // Ensure directory exists
+    const dirPath = path.dirname(configPath);
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+
     fs.writeFileSync(configPath, JSON.stringify(data, null, 2));
-    return res.json(data); // no need to parse since it's already an object
-  } catch (err) {
-    res.status(500).json({ error: "Failed to save config." });
+    return res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to save config.", message: err.message });
   }
 };

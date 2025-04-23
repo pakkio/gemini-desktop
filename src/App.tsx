@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import ChatPage from './screens/Chat/ChatPage';
 import SettingsPage from './screens/McpSettingsPage/McpSettingsPage';
 import ServerConfiguration from './screens/ServerConfiguration/ServerConfiguration';

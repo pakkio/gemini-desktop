@@ -8,11 +8,9 @@ export function startServer() {
   const PORT = process.env.PORT || 5001;
 
   const app: Application = express();
-  app.use(
-    cors({
-      origin: "http://localhost:5173",
-    })
-  );
+  app.use(cors({
+    origin: '*', // allow all — use this for Electron apps with file:// origin
+  }));
   app.use(express.json());
 
   app.use("/api", routes);

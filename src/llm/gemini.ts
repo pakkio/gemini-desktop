@@ -2,15 +2,17 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { app } from "electron";
 
+const isDev = process.env.NODE_ENV === "development";
 // Convert `import.meta.url` to a file path
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const configPath = path.join(
-  __dirname,
-  "../src/backend/configurations/serverConfig.json"
-);
+const configPath = isDev
+  ? path.join(__dirname, "../src/backend/configurations/serverConfig.json") // for development
+  : path.join(app.getAppPath(), "static", "serverConfig.json"); // for packaged app
+
 
 export async function initializeAndGetModel() {
   try {
