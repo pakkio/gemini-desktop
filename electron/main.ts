@@ -39,7 +39,7 @@ function createWindow() {
       webSecurity: false,
       preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true,
-      nodeIntegration: false,
+      nodeIntegration: true,
       devTools: true, // ✅ explicitly enable devTools
     },
   });

@@ -1,3 +1,5 @@
+// --- START OF FILE chatLLM.ts ---
+
 import {
   Content,
   Part,
@@ -9,15 +11,30 @@ import { initializeAndGetModel } from "../../../llm/gemini";
 
 export const chatWithLLM = async (req: any, res: any) => {
   try {
-    const toolToServerMap = new Map<string, string>();
+    // REMOVE the local declaration of toolToServerMap here
+    // const toolToServerMap = new Map<string, string>(); // <-- REMOVE THIS LINE
+
     const { message, history } = req.body;
     if (!message) {
       res.status(400).json({ error: "Message is required" });
       return;
     }
-    const { allGeminiTools, mcpClients } = await connectToMcpServers();
+
+    // Destructure the returned map
+    const { allGeminiTools, mcpClients, toolToServerMap } = await connectToMcpServers(); // <-- GET THE MAP HERE
+
+    // Log the actual tools being sent to Gemini for debugging
+    console.log("--- Tools passed to Gemini ---");
+    console.log(JSON.stringify(allGeminiTools, null, 2));
+    console.log("-----------------------------");
+    console.log("--- Tool to Server Map ---");
+    console.log(toolToServerMap);
+    console.log("-------------------------");
+
+
     if (mcpClients.size === 0) {
-      res.status(503).json({ error: "No MCP Servers are connected",allGeminiTools, mcpClients });
+      // Pass the maps here too for better error reporting if needed
+      res.status(503).json({ error: "No MCP Servers are connected", allGeminiTools, mcpClients, toolToServerMap });
       return;
     }
     const geminiModel = await initializeAndGetModel();
@@ -27,8 +44,6 @@ export const chatWithLLM = async (req: any, res: any) => {
     }
     const chat = geminiModel.startChat({
       history: (history || []) as Content[],
-
-      // Use the aggregated gemini tools list
       tools:
         allGeminiTools.length > 0
           ? [{ functionDeclarations: allGeminiTools }]
@@ -53,28 +68,27 @@ export const chatWithLLM = async (req: any, res: any) => {
 
       const functionResponses: Part[] = [];
 
-      // Process calls sequentially for simplicity
       for (const call of functionCallsToProcess) {
         const toolName = call.name;
         const toolArgs = call.args;
 
-        // --- Find the correct MCP client for this tool ---
-        const serverKey = toolToServerMap.get(toolName);
+        // --- Use the CORRECT toolToServerMap ---
+        const serverKey = toolToServerMap.get(toolName); // This map now has data
         const targetClient = serverKey ? mcpClients.get(serverKey) : undefined;
 
         if (!targetClient) {
           console.error(
-            `❌ Tool "${toolName}" requested by Gemini, but no connected MCP client provides it or the client is down.`
+            `❌ Tool "${toolName}" requested by Gemini, but no connected MCP client provides it or the client is down (Server Key not found in map or client missing).` // Updated error
           );
           functionResponses.push({
             functionResponse: {
               name: toolName,
               response: {
-                content: `Error: Tool "${toolName}" is not available or the corresponding server is down.`,
+                content: `Error: Tool "${toolName}" could not be routed to a server. It might be unavailable or the mapping failed.`, // Updated response
               },
             },
           });
-          continue; // Skip to next call
+          continue;
         }
 
         console.log(
@@ -82,7 +96,6 @@ export const chatWithLLM = async (req: any, res: any) => {
           toolArgs
         );
         try {
-          // --- Call the specific client instance ---
           const mcpToolResult = await targetClient.callTool({
             name: toolName,
             arguments: toolArgs as { [x: string]: unknown } | undefined,
@@ -116,7 +129,7 @@ export const chatWithLLM = async (req: any, res: any) => {
             },
           });
         }
-      } // End for loop processing calls
+      } // End for loop
 
       console.log(
         "Sending tool responses back to Gemini:",
@@ -125,29 +138,29 @@ export const chatWithLLM = async (req: any, res: any) => {
       result = await chat.sendMessage(functionResponses);
       response = result.response;
 
-      // Re-evaluate function calls for the next iteration
       currentContent = response?.candidates?.[0]?.content;
       functionCallsToProcess = currentContent?.parts
         ?.filter((part: Part) => !!part.functionCall)
         .map((part: Part) => part.functionCall as FunctionCall);
     } // End while loop
 
-    // --- Extract final text answer (remains the same) ---
-    let finalAnswer = "Sorry, I could not generate a text response."; // Default response
+    // --- Extract final text answer ---
+    let finalAnswer = "Sorry, I could not generate a text response.";
     if (response?.candidates?.[0]?.content?.parts) {
       const textParts = response.candidates[0].content.parts
-        .filter((part: Part) => typeof part.text === "string") // Filter for parts with text
-        .map((part: Part) => part.text); // Extract text
+        .filter((part: Part) => typeof part.text === "string")
+        .map((part: Part) => part.text);
       if (textParts.length > 0) {
-        finalAnswer = textParts.join(""); // Join text parts
+        finalAnswer = textParts.join("");
       }
     }
-    console.log("Final Gemini response:", finalAnswer); // This logged the correct summary
+    console.log("Final Gemini response:", finalAnswer);
 
     const finalHistory = await chat.getHistory();
     res.json({ reply: finalAnswer, history: finalHistory });
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: "Failed to read config." });
+  } catch (err: any) { // Add type safety for error
+    console.error("Error in chatWithLLM:", err); // Log full error
+    res.status(500).json({ error: `Failed in chat handler: ${err.message || 'Unknown error'}` }); // Provide more error detail
   }
 };
+// --- END OF FILE chatLLM.ts ---
