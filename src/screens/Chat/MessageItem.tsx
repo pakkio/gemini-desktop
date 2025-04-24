@@ -1,113 +1,162 @@
-import { Box, Typography, Paper, Link } from '@mui/material';
-import { ChatMessage } from './types/types';
-import ReactMarkdown from 'react-markdown'; // Import the library
-import rehypeHighlight from 'rehype-highlight'; // Import highlighter plugin
-import 'highlight.js/styles/github.css'; // Import a highlight.js theme (choose one you like)
-                                        // You might want to import this globally (e.g., in index.tsx or App.tsx)
+import { Box, Typography, Paper, Link, Avatar, useTheme } from '@mui/material';
+import { ChatMessage } from './types/types'; // Adjust path
+import ReactMarkdown from 'react-markdown';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/atom-one-dark.css'; // Choose a theme (atom-one-dark is nice)
+import { motion } from 'framer-motion'; // Import motion
+import PersonIcon from '@mui/icons-material/Person';
+import SmartToyIcon from '@mui/icons-material/SmartToy'; // Or your preferred bot icon
 
 interface Props {
   message: ChatMessage;
 }
 
-// Define MUI component mappings for Markdown elements
+// Keep your markdownComponents definition (it's good!)
 const markdownComponents = {
-  // Map paragraphs to MUI Typography
-  p: ({node, ...props}: any) => <Typography variant="body1" paragraph {...props} />,
-
-  // Map headings (adjust variants as needed)
-  h1: ({node, ...props}: any) => <Typography variant="h4" gutterBottom {...props} />,
-  h2: ({node, ...props}: any) => <Typography variant="h5" gutterBottom {...props} />,
-  h3: ({node, ...props}: any) => <Typography variant="h6" gutterBottom {...props} />,
-  h4: ({node, ...props}: any) => <Typography variant="subtitle1" gutterBottom {...props} />,
-  h5: ({node, ...props}: any) => <Typography variant="subtitle2" gutterBottom {...props} />,
-  h6: ({node, ...props}: any) => <Typography variant="caption" gutterBottom {...props} />,
-
-  // Map lists
-  ul: ({node, ...props}: any) => <Box component="ul" sx={{ pl: 2, mt: 1, mb: 1 }} {...props} />,
-  ol: ({node, ...props}: any) => <Box component="ol" sx={{ pl: 2, mt: 1, mb: 1 }} {...props} />,
-  li: ({node, ...props}: any) => <Typography component="li" variant="body1" {...props} />,
-
-  // Map links to MUI Link
+  p: ({node, ...props}: any) => <Typography variant="body2" paragraph sx={{ mb: 1, '&:last-child': { mb: 0 } }} {...props} />, // Use body2 for tighter text, adjust margins
+  h1: ({node, ...props}: any) => <Typography variant="h5" gutterBottom {...props} />,
+  h2: ({node, ...props}: any) => <Typography variant="h6" gutterBottom {...props} />,
+  h3: ({node, ...props}: any) => <Typography variant="subtitle1" gutterBottom {...props} />,
+  // Add other headings if needed
+  ul: ({node, ...props}: any) => <Box component="ul" sx={{ pl: 2.5, my: 0.5 }} {...props} />,
+  ol: ({node, ...props}: any) => <Box component="ol" sx={{ pl: 2.5, my: 0.5 }} {...props} />,
+  li: ({node, ...props}: any) => <Typography component="li" variant="body2" sx={{ my: 0.5 }} {...props} />,
   a: ({node, ...props}: any) => <Link target="_blank" rel="noopener noreferrer" {...props} />,
-
-  // Map code blocks (styling handled by rehype-highlight and the imported CSS)
-  // You can further customize pre/code styling here if needed
-  pre: ({node, ...props}: any) => <Box component="pre" sx={{ overflowX: 'auto', p: 1, bgcolor: 'grey.100', borderRadius: 1 }} {...props} />,
-  code: ({node, inline, ...props}: any) => (
-    <Typography
-      component="code"
-      sx={{
-        fontFamily: 'monospace',
-        fontSize: '0.9em',
-        bgcolor: inline ? 'action.hover' : 'transparent', // Different background for inline code
-        p: inline ? '0.2em 0.4em' : 0,
-        borderRadius: inline ? '3px' : 0,
-      }}
-      {...props}
-     />
-   ),
-
-   // Map blockquotes
+  pre: ({node, ...props}: any) => <Box component="pre" sx={{ overflowX: 'auto', p: 1.5, my: 1, bgcolor: 'rgba(0,0,0,0.05)', borderRadius: 1, fontSize: '0.85rem' }} {...props} />,
+  code: ({node, inline, className, children, ...props}: any) => {
+    const match = /language-(\w+)/.exec(className || '')
+    return !inline ? ( // Block code (handled by pre and rehypeHighlight)
+       <code className={className} {...props}>{children}</code>
+    ) : ( // Inline code
+      <Typography
+        component="code"
+        sx={{
+          fontFamily: 'monospace',
+          fontSize: '0.9em',
+          bgcolor: 'action.hover',
+          p: '0.1em 0.3em',
+          borderRadius: '4px',
+        }}
+        {...props}
+      >{children}</Typography>
+    )
+  },
    blockquote: ({node, ...props}: any) => (
-     <Paper
-       elevation={0}
+     <Box
+       component="blockquote"
        sx={{
          borderLeft: (theme) => `4px solid ${theme.palette.divider}`,
          pl: 1.5,
          my: 1,
          fontStyle: 'italic',
          color: 'text.secondary',
+         '& p': { // Ensure paragraphs inside blockquotes have less margin
+            m: 0,
+         }
        }}
        {...props}
      />
    ),
-
-   // Map thematic breaks (horizontal rules)
    hr: ({node, ...props}: any) => <Box component="hr" sx={{ my: 2, border: 'none', borderTop: (theme) => `1px solid ${theme.palette.divider}` }} {...props} />,
-
-   // You can add mappings for other elements like tables (<table>, <thead>, etc.) if needed
 };
 
-
 const MessageItem = ({ message }: Props) => {
+  const theme = useTheme();
   const isUser = message.role === 'user';
   const isModel = message.role === 'model';
+  const isSystem = message.role === 'system';
 
-  const bgColor = isUser ? 'primary.main' : isModel ? 'grey.200' : 'grey.100';
-  const color = isUser ? '#fff' : 'inherit';
-  const align = isUser ? 'flex-end' : isModel ? 'flex-start' : 'center';
+  const align = isUser ? 'flex-end' : 'flex-start';
+  const justify = isUser ? 'flex-end' : 'flex-start'; // Needed for outer container alignment
 
-  // Combine parts into a single string for Markdown rendering
-  // Assumes the backend sends the complete Markdown message potentially split into parts.
-  // Adjust if each part is meant to be a *separate* markdown block.
-  const messageText = message.parts.map(p => p.text).join('');
+  const bubbleColor = isUser
+    ? theme.palette.userBubble.main // Use theme custom color
+    : isModel
+    ? theme.palette.modelBubble.main // Use theme custom color
+    : theme.palette.grey[400]; // System message color
+
+  const textColor = isUser
+    ? theme.palette.userBubble.contrastText
+    : isModel
+    ? theme.palette.modelBubble.contrastText
+    : theme.palette.getContrastText(theme.palette.grey[400]);
+
+  const borderRadius = isUser
+    ? '20px 20px 5px 20px'
+    : '20px 20px 20px 5px';
+
+  const messageText = message.parts.map(p => p.text).join('\n'); // Join with newline for potential markdown structure
+
+  // Animation variants for framer-motion
+  const variants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+  };
+
+  if (isSystem) {
+      return (
+          <motion.div initial="hidden" animate="visible" variants={variants} style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: theme.spacing(1), marginBottom: theme.spacing(1) }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic', textAlign: 'center', maxWidth: '80%' }}>
+                {messageText}
+            </Typography>
+          </motion.div>
+      )
+  }
 
   return (
-    <Box display="flex" justifyContent={align} sx={{ mb: 1 }}> {/* Add some margin between messages */}
-      <Paper
-        elevation={1} // Add slight elevation
-        sx={{
-          p: 1.5,
-          maxWidth: '75%',
-          bgcolor: bgColor,
-          color,
-          borderRadius: 3,
-          overflow: 'hidden', // Ensure content like code blocks don't break layout
-        }}
-      >
-        <Typography variant="body2" fontWeight="bold" sx={{ mb: 0.5 }}> {/* Margin below role */}
-          {message.role === 'model' ? 'Assistant' : message.role === 'user' ? 'You' : message.role}
-        </Typography>
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={variants}
+      style={{ display: 'flex', justifyContent: justify, width: '100%' }} // Align the whole row
+      layout // Animate layout changes smoothly if content size changes
+    >
+      <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, maxWidth: '80%' }}>
+        {/* Avatar for Model */}
+        {isModel && (
+          <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main', mb: 0.5 }}>
+            <SmartToyIcon fontSize="small" />
+          </Avatar>
+        )}
 
-        {/* Use ReactMarkdown to render the combined text */}
-        <ReactMarkdown
-          components={markdownComponents} // Use our MUI component mapping
-          rehypePlugins={[rehypeHighlight]} // Enable syntax highlighting
+        <Paper
+          elevation={1}
+          sx={{
+            p: '10px 14px', // Adjust padding
+            bgcolor: bubbleColor,
+            color: textColor,
+            borderRadius: borderRadius,
+            overflowWrap: 'break-word', // Break long words/urls
+            wordBreak: 'break-word', // Ensure breaks
+            hyphens: 'auto',
+            // Remove default paragraph margin from markdown renderer if it's the only element
+             '& .MuiTypography-paragraph:last-child': {
+                mb: 0,
+             },
+          }}
         >
-          {messageText}
-        </ReactMarkdown>
-      </Paper>
-    </Box>
+          {/* Render Role only if needed, maybe just for system or debug */}
+          {/* <Typography variant="caption" display="block" sx={{ mb: 0.5, fontWeight: 'medium', opacity: 0.8 }}>
+            {isModel ? 'Assistant' : 'You'}
+          </Typography> */}
+
+          <ReactMarkdown
+            components={markdownComponents}
+            rehypePlugins={[rehypeHighlight]}
+            // remarkPlugins={[remarkGfm]} // Optional: Add Github Flavored Markdown support
+          >
+            {messageText}
+          </ReactMarkdown>
+        </Paper>
+
+        {/* Avatar for User (Optional, uncomment if desired) */}
+        {/* {isUser && (
+          <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.light', mb: 0.5 }}>
+            <PersonIcon fontSize="small" />
+          </Avatar>
+        )} */}
+      </Box>
+    </motion.div>
   );
 };
 
