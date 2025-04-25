@@ -79,5 +79,5 @@ app.whenReady().then(() => {
   createWindow();
 });
 ipcMain.handle("get-info", async () => {
-  return { message: "Hello from Node.js backend!" };
+  return app.getPath('home');
 });

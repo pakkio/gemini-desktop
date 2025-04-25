@@ -15,6 +15,17 @@
       "target": "dmg",
       "category": "public.app-category.utilities"
     },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
     "files": [
       "dist/",
       "dist-electron/",
