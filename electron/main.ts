@@ -3,10 +3,12 @@ import { app, BrowserWindow, ipcMain, screen } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { startServer } from "../src/backend/server.ts";
-
+import fixPath from 'fix-path'; 
 // const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
+console.log('[Main Process] PATH before fix:', process.env.PATH);
+fixPath();
+console.log('[Main Process] PATH after fix:', process.env.PATH); // Check if it changed
 // The built directory structure
 //
 // ├─┬─┬ dist

@@ -1,4 +1,4 @@
-import { Box, Avatar, Paper, keyframes, useTheme } from '@mui/material';
+import { Box, Avatar, Paper, keyframes } from '@mui/material';
 import SmartToyIcon from '@mui/icons-material/SmartToy'; // Or your preferred bot icon
 
 // Keyframes for the dot animation
@@ -8,7 +8,6 @@ const bounce = keyframes`
 `;
 
 const TypingIndicator = () => {
-    const theme = useTheme();
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, mb: 1 }}>

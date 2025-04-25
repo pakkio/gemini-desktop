@@ -4,7 +4,6 @@ import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/atom-one-dark.css'; // Choose a theme (atom-one-dark is nice)
 import { motion } from 'framer-motion'; // Import motion
-import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy'; // Or your preferred bot icon
 
 interface Props {
@@ -24,7 +23,6 @@ const markdownComponents = {
   a: ({node, ...props}: any) => <Link target="_blank" rel="noopener noreferrer" {...props} />,
   pre: ({node, ...props}: any) => <Box component="pre" sx={{ overflowX: 'auto', p: 1.5, my: 1, bgcolor: 'rgba(0,0,0,0.05)', borderRadius: 1, fontSize: '0.85rem' }} {...props} />,
   code: ({node, inline, className, children, ...props}: any) => {
-    const match = /language-(\w+)/.exec(className || '')
     return !inline ? ( // Block code (handled by pre and rehypeHighlight)
        <code className={className} {...props}>{children}</code>
     ) : ( // Inline code
@@ -66,7 +64,6 @@ const MessageItem = ({ message }: Props) => {
   const isModel = message.role === 'model';
   const isSystem = message.role === 'system';
 
-  const align = isUser ? 'flex-end' : 'flex-start';
   const justify = isUser ? 'flex-end' : 'flex-start'; // Needed for outer container alignment
 
   const bubbleColor = isUser

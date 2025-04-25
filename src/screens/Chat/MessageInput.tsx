@@ -1,6 +1,5 @@
 import { Box, TextField, IconButton, CircularProgress, Tooltip } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
-import { useState } from 'react';
 
 interface Props {
     inputValue: string;
