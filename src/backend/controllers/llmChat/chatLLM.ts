@@ -24,12 +24,6 @@ export const chatWithLLM = async (req: any, res: any) => {
     const { allGeminiTools, mcpClients, toolToServerMap } = await connectToMcpServers(); // <-- GET THE MAP HERE
 
     // Log the actual tools being sent to Gemini for debugging
-    console.log("--- Tools passed to Gemini ---");
-    console.log(JSON.stringify(allGeminiTools, null, 2));
-    console.log("-----------------------------");
-    console.log("--- Tool to Server Map ---");
-    console.log(toolToServerMap);
-    console.log("-------------------------");
 
 
     if (mcpClients.size === 0) {

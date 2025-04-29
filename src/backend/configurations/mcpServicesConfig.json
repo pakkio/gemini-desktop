@@ -1,21 +1,55 @@
 {
   "leftList": [
     {
-      "label": "Filesystem",
-      "key": "filesystem",
+      "label": "Google Drive",
+      "key": "gdrive",
       "config": {
         "command": "npx",
         "args": [
           "-y",
-          "@modelcontextprotocol/server-filesystem",
-          "/Users/muneerpuri/Desktop",
-          "/Users/muneerpuri/Downloads",
-          "/Users/muneerpuri/Documents"
-        ]
+          "@modelcontextprotocol/server-gdrive"
+        ],
+        "env": {
+          "GDRIVE_CREDENTIALS_PATH": "/Users/muneerpuri/Desktop/.gdrive-server-credentials.json"
+        }
       }
     }
   ],
   "rightList": [
+    {
+      "label": "Everything",
+      "key": "everything",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-everything"
+        ]
+      }
+    },
+    {
+      "label": "Redis",
+      "key": "redis",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-redis",
+          "redis://localhost:6379"
+        ]
+      }
+    },
+    {
+      "label": "Memory",
+      "key": "memory",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-memory"
+        ]
+      }
+    },
     {
       "label": "AWS KB Retrieval",
       "key": "aws-kb-retrieval",
@@ -33,6 +67,31 @@
       }
     },
     {
+      "label": "Filesystem",
+      "key": "filesystem",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-filesystem",
+          "/Users/muneerpuri/Desktop",
+          "/Users/muneerpuri/Downloads",
+          "/Users/muneerpuri/Documents"
+        ]
+      }
+    },
+    {
+      "label": "Sequential Thinking",
+      "key": "sequential-thinking",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-sequential-thinking"
+        ]
+      }
+    },
+    {
       "label": "Brave Search",
       "key": "brave-search",
       "config": {
@@ -44,6 +103,37 @@
         "env": {
           "BRAVE_API_KEY": ""
         }
+      }
+    },
+    {
+      "label": "Puppeteer",
+      "key": "puppeteer",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-puppeteer"
+        ]
+      }
+    },
+    {
+      "label": "PostgreSQL",
+      "key": "postgres",
+      "inputs": [
+        {
+          "type": "promptString",
+          "id": "pg_url",
+          "description": "postgresql://postgres:root@localhost:5432/one_minute_stock_demo"
+        }
+      ],
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-postgres",
+          "postgresql://postgres:root@localhost:5432/one_minute_stock_demo",
+          "${input:pg_url}"
+        ]
       }
     },
     {
@@ -61,57 +151,6 @@
       }
     },
     {
-      "label": "Everything",
-      "key": "everything",
-      "config": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-everything"
-        ]
-      }
-    },
-    {
-      "label": "GitHub",
-      "key": "github",
-      "config": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-github"
-        ],
-        "env": {
-          "GITHUB_PERSONAL_ACCESS_TOKEN": ""
-        }
-      }
-    },
-    {
-      "label": "GitLab",
-      "key": "gitlab",
-      "config": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-gitlab"
-        ],
-        "env": {
-          "GITLAB_PERSONAL_ACCESS_TOKEN": "",
-          "GITLAB_API_URL": ""
-        }
-      }
-    },
-    {
-      "label": "Google Drive",
-      "key": "gdrive",
-      "config": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-gdrive"
-        ]
-      }
-    },
-    {
       "label": "Google Maps",
       "key": "google-maps",
       "config": {
@@ -126,60 +165,17 @@
       }
     },
     {
-      "label": "Memory",
-      "key": "memory",
+      "label": "GitHub",
+      "key": "github",
       "config": {
         "command": "npx",
         "args": [
           "-y",
-          "@modelcontextprotocol/server-memory"
-        ]
-      }
-    },
-    {
-      "label": "PostgreSQL",
-      "key": "postgres",
-      "config": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-postgres",
-          "postgresql://localhost/mydb"
-        ]
-      }
-    },
-    {
-      "label": "Puppeteer",
-      "key": "puppeteer",
-      "config": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-puppeteer"
-        ]
-      }
-    },
-    {
-      "label": "Redis",
-      "key": "redis",
-      "config": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-redis",
-          "redis://localhost:6379"
-        ]
-      }
-    },
-    {
-      "label": "Sequential Thinking",
-      "key": "sequential-thinking",
-      "config": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-sequential-thinking"
-        ]
+          "@modelcontextprotocol/server-github"
+        ],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": 
+        }
       }
     },
     {
@@ -210,6 +206,21 @@
         ],
         "env": {
           "API_KEY": ""
+        }
+      }
+    },
+    {
+      "label": "GitLab",
+      "key": "gitlab",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-gitlab"
+        ],
+        "env": {
+          "GITLAB_PERSONAL_ACCESS_TOKEN": ,
+          "GITLAB_API_URL": "https://gitlab.com/api/v4"
         }
       }
     },

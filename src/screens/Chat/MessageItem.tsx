@@ -119,6 +119,7 @@ const MessageItem = ({ message }: Props) => {
         <Paper
           elevation={1}
           sx={{
+            width:"100%",
             p: '10px 14px', // Adjust padding
             bgcolor: bubbleColor,
             color: textColor,

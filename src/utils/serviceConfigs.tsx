@@ -1,7 +1,4 @@
-
-
-export async function getDefaultServiceConfigs(path:string){
-
+export async function getDefaultServiceConfigs(path: string) {
   return {
     "aws-kb-retrieval": {
       command: "npx",
@@ -50,6 +47,9 @@ export async function getDefaultServiceConfigs(path:string){
     gdrive: {
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-gdrive"],
+      env: {
+        GDRIVE_CREDENTIALS_PATH: "",
+      },
     },
     "google-maps": {
       command: "npx",
@@ -455,5 +455,5 @@ export async function getDefaultServiceConfigs(path:string){
         XERO_CLIENT_SECRET: "",
       },
     },
-  }
+  };
 }
