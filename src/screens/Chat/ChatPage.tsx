@@ -6,14 +6,23 @@ import { useState, useRef, useEffect } from "react";
 import { get, post } from "../../utils/api_helper/api_helper"; // Adjust path if needed
 import { useNavigate } from "react-router-dom";
 import { ChatMessage } from "./types/types"; // Adjust path if needed
+import ChatHistorySidebar from './ChatHistorySidebar';
+import { v4 as uuidv4 } from "uuid";
 
 export default function ChatPage() {
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [chatHistories, setChatHistories] = useState<ChatHistory[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null); // Ref for the scrollable container
   const navigate = useNavigate();
+
+  const toggleDrawer = () => {
+    setDrawerOpen((prev) => !prev);
+  };
 
   // --- Existing checkServerConfig function ---
   async function checkServerConfig() {
@@ -34,7 +43,6 @@ export default function ChatPage() {
         // Optionally navigate or show an error message
     }
   }
-
   useEffect(() => {
     checkServerConfig();
      // Add some initial placeholder messages for design preview if desired
@@ -46,6 +54,8 @@ export default function ChatPage() {
      // ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+
 
   // --- Improved scrollToBottom ---
   const scrollToBottom = () => {
@@ -66,10 +76,62 @@ export default function ChatPage() {
   }, [messages]);
 
 
+
+  useEffect(() => {
+    const stored = localStorage.getItem("chatHistories");
+    if (stored) {
+      setChatHistories(JSON.parse(stored));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!currentChatId || messages.length === 0) return;
+
+    const updatedHistories = [...chatHistories];
+    const idx = updatedHistories.findIndex((chat) => chat.id === currentChatId);
+
+    const firstUserMessage = messages.find((m) => m.role === "user")?.parts[0]?.text;
+    const newTitle = firstUserMessage?.slice(0, 25) || "New Chat";
+
+    if (idx >= 0) {
+      updatedHistories[idx].messages = messages;
+      updatedHistories[idx].title = newTitle;
+    } else {
+      updatedHistories.push({
+        id: currentChatId,
+        title: newTitle,
+        messages,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    setChatHistories(updatedHistories);
+    localStorage.setItem("chatHistories", JSON.stringify(updatedHistories));
+  }, [messages]);
+
+  const startNewChat = () => {
+    setCurrentChatId(uuidv4());
+    setMessages([]);
+    setDrawerOpen(false);
+  };
+
+  const loadChat = (id: string) => {
+    const chat = chatHistories.find((c) => c.id === id);
+    if (chat) {
+      setCurrentChatId(id);
+      setMessages(chat.messages);
+      setDrawerOpen(false);
+    }
+  };
   // --- Existing sendMessage function (no changes needed here) ---
   const sendMessage = async (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault(); // Make event optional for direct calls
     if (!inputValue.trim() || isLoading) return;
+
+    if (!currentChatId) {
+      const newId = uuidv4();
+      setCurrentChatId(newId);
+    }
 
     const newUserMessage: ChatMessage = {
       role: "user",
@@ -119,6 +181,7 @@ export default function ChatPage() {
     }
   };
 
+
   return (
     <Box
       sx={{
@@ -130,30 +193,38 @@ export default function ChatPage() {
         overflow: "hidden", // Prevent body scroll
       }}
     >
-      <ChatHeader />
-
-      {/* Message List Area */}
-      <Box
-        ref={listContainerRef} // Add ref here
-        sx={{
-          flexGrow: 1,
-          overflowY: "auto", // Enable scrolling within this Box
-          p: { xs: 1, sm: 2, md: 3 }, // Responsive padding
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-         <MessageList
+      <ChatHistorySidebar
+        drawerOpen={drawerOpen}
+        toggleDrawer={toggleDrawer}
+        chatHistories={chatHistories}
+        loadChat={loadChat}
+        startNewChat={startNewChat}
+      />
+      <Box component="main" sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
+        <ChatHeader onMenuClick={toggleDrawer} />
+        {/* Message List Area */}
+        <Box
+          ref={listContainerRef} // Add ref here
+          sx={{
+            flexGrow: 1,
+            overflowY: "auto", // Enable scrolling within this Box
+            p: { xs: 1, sm: 2, md: 3 }, // Responsive padding
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <MessageList
             messages={messages}
             isLoading={isLoading} // Pass loading state
             messagesEndRef={messagesEndRef} // Still needed for potential focus/marker
           />
           {/* Invisible div to ensure scroll target is always at the bottom */}
           <div ref={messagesEndRef} style={{ height: '1px' }} />
-      </Box>
 
-      {/* Input Area */}
-      <Box
+        </Box>
+
+        {/* Input Area */}
+        <Box
         sx={{
           p: { xs: 1, sm: 2 },
           // borderTop: 1, // Use divider color from theme
@@ -162,13 +233,14 @@ export default function ChatPage() {
           boxShadow: '0 -2px 5px rgba(0,0,0,0.05)' // Subtle shadow separating input
         }}
       >
-        <MessageInput
+          <MessageInput
           inputValue={inputValue}
           setInputValue={setInputValue}
           handleSubmit={sendMessage}
           isLoading={isLoading}
         />
+        </Box>
       </Box>
     </Box>
   );
-}
+};
