@@ -25907,14 +25907,7 @@ function requireFunctionBind() {
   functionBind = Function.prototype.bind || implementation2;
   return functionBind;
 }
-var functionCall;
-var hasRequiredFunctionCall;
-function requireFunctionCall() {
-  if (hasRequiredFunctionCall) return functionCall;
-  hasRequiredFunctionCall = 1;
-  functionCall = Function.prototype.call;
-  return functionCall;
-}
+var functionCall = Function.prototype.call;
 var functionApply;
 var hasRequiredFunctionApply;
 function requireFunctionApply() {
@@ -25926,12 +25919,12 @@ function requireFunctionApply() {
 var reflectApply = typeof Reflect !== "undefined" && Reflect && Reflect.apply;
 var bind$2 = requireFunctionBind();
 var $apply$1 = requireFunctionApply();
-var $call$2 = requireFunctionCall();
+var $call$2 = functionCall;
 var $reflectApply = reflectApply;
 var actualApply = $reflectApply || bind$2.call($call$2, $apply$1);
 var bind$1 = requireFunctionBind();
 var $TypeError$4 = type;
-var $call$1 = requireFunctionCall();
+var $call$1 = functionCall;
 var $actualApply = actualApply;
 var callBindApplyHelpers = function callBindBasic(args2) {
   if (args2.length < 1 || typeof args2[0] !== "function") {
@@ -26046,7 +26039,7 @@ var getProto = requireGetProto();
 var $ObjectGPO = requireObject_getPrototypeOf();
 var $ReflectGPO = requireReflect_getPrototypeOf();
 var $apply = requireFunctionApply();
-var $call = requireFunctionCall();
+var $call = functionCall;
 var needsEval = {};
 var TypedArray = typeof Uint8Array === "undefined" || !getProto ? undefined$1 : getProto(Uint8Array);
 var INTRINSICS = {
@@ -75947,21 +75940,8 @@ async function initializeAndGetModel() {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const geminiModel = genAI.getGenerativeModel({
       model: "gemini-1.5-flash",
-      systemInstruction: `You are a helpful assistant that uses a defined set of tools (provided as function declarations) to fulfill user requests. You MUST format ALL of your responses using Markdown.
-
-**Your Workflow:**
-1.  **Analyze Request:** Understand the user's specific goal and identify the core action they want to perform.
-2.  **Identify Tool:** Consult the list of available function declarations. Find the single best tool whose name and description match the user's goal. Evaluate the tool's purpose carefully.
-3.  **Extract Parameters:** Identify ALL parameters required by the chosen tool's schema. Extract the necessary values from the user's request.
-4.  **Clarify if Needed:** If any *mandatory* parameters are missing from the user's request, **you MUST ask the user clarifying questions** to obtain the specific missing information. Be precise about what is needed (e.g., "To perform the '[tool_description]' action, I need the '[parameter_name]'. Could you please provide it?"). Do not attempt to call the function without all mandatory parameters.
-5.  **Execute Tool:** Once all mandatory parameters are gathered and confirmed, formulate and execute the function call precisely according to the tool's schema.
-6.  **Report Results:** Clearly present the results returned by the tool using Markdown formatting. If the tool execution indicates an error, failure, or an expected outcome like 'no results found', report that specific outcome accurately (e.g., "The tool reported: '[specific error message from tool]'." or "The search using '[parameter value]' returned no results."). Do not state a tool is simply 'unavailable' if an attempt was made or could be made with more information.
-7.  **No Tool Fallback:** If no available tool genuinely matches the user's core request, explicitly state that you do not have the capability using Markdown (e.g., "I cannot perform the action '[user's requested action]' as I don't have a suitable tool.").
-
-**Important Rules:**
-*   Strictly adhere to the capabilities defined in the provided function declarations. Do not invent tools or assume functionality.
-*   Always prioritize asking for missing mandatory parameters before attempting execution.
-*   Ensure all responses are formatted in Markdown.
+      systemInstruction: `
+      You are a helpful assistant that have some predefined tools. whenever a user query comes you need to first make sure that whether the available tools help you to solve the issue if it does you use it and give the response back to user.. if some tools require some waiting time wait for them to complete theor processing andt then provide output back to the user. always answer in MARKDOWN format.
 `
     });
     return geminiModel;
@@ -75969,8 +75949,12 @@ async function initializeAndGetModel() {
     console.log(e);
   }
 }
+const delay = (ms2) => new Promise((resolve3) => setTimeout(resolve3, ms2));
+const MCP_TOOL_MAX_RETRIES = 3;
+const MCP_TOOL_RETRY_DELAY_MS = 1e3;
+const TOTAL_ATTEMPTS = 1 + MCP_TOOL_MAX_RETRIES;
 const chatWithLLM = async (req2, res2) => {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
   try {
     const { message, history } = req2.body;
     if (!message) {
@@ -75978,6 +75962,12 @@ const chatWithLLM = async (req2, res2) => {
       return;
     }
     const { allGeminiTools: allGeminiTools2, mcpClients: mcpClients2, toolToServerMap: toolToServerMap2 } = await connectToMcpServers();
+    console.log(
+      "Tools configured for Gemini:",
+      allGeminiTools2.map((t) => t.name)
+    );
+    console.log("Connected MCP Clients:", Array.from(mcpClients2.keys()));
+    console.log("Tool to Server Map:", Object.fromEntries(toolToServerMap2));
     if (mcpClients2.size === 0) {
       res2.status(503).json({ error: "No MCP Servers are connected", allGeminiTools: allGeminiTools2, mcpClients: mcpClients2, toolToServerMap: toolToServerMap2 });
       return;
@@ -76001,60 +75991,82 @@ const chatWithLLM = async (req2, res2) => {
         functionCallsToProcess.map((c) => c.name)
       );
       const functionResponses = [];
-      for (const call of functionCallsToProcess) {
+      await Promise.all(functionCallsToProcess.map(async (call) => {
         const toolName = call.name;
         const toolArgs = call.args;
         const serverKey = toolToServerMap2.get(toolName);
         const targetClient = serverKey ? mcpClients2.get(serverKey) : void 0;
         if (!targetClient) {
           console.error(
-            `❌ Tool "${toolName}" requested by Gemini, but no connected MCP client provides it or the client is down (Server Key not found in map or client missing).`
-            // Updated error
+            `❌ Tool "${toolName}" requested by Gemini, but no connected MCP client provides it or the client is down (Server Key: ${serverKey || "Not Found"}).`
           );
           functionResponses.push({
             functionResponse: {
               name: toolName,
               response: {
                 content: `Error: Tool "${toolName}" could not be routed to a server. It might be unavailable or the mapping failed.`
-                // Updated response
               }
             }
           });
-          continue;
+          return;
         }
         console.log(
-          `Calling MCP tool "${toolName}" via server "${serverKey}" with args:`,
+          `Attempting MCP tool "${toolName}" via server "${serverKey}" with args:`,
           toolArgs
         );
-        try {
-          const mcpToolResult = await targetClient.callTool({
-            name: toolName,
-            arguments: toolArgs
-          });
-          console.log(`MCP Tool "${toolName}" response:`, mcpToolResult);
+        let attempt = 0;
+        let success = false;
+        let mcpToolResult = null;
+        let lastToolError = null;
+        while (attempt < TOTAL_ATTEMPTS && !success) {
+          attempt++;
+          try {
+            console.log(`  [Attempt ${attempt}/${TOTAL_ATTEMPTS}] Calling tool "${toolName}"...`);
+            mcpToolResult = await targetClient.callTool({
+              name: toolName,
+              arguments: toolArgs
+            });
+            console.log(`  [Attempt ${attempt}] SUCCESS for tool "${toolName}". Response:`, mcpToolResult);
+            success = true;
+          } catch (toolError) {
+            lastToolError = toolError;
+            console.warn(
+              `  [Attempt ${attempt}/${TOTAL_ATTEMPTS}] FAILED for tool "${toolName}" via server "${serverKey}". Error:`,
+              toolError.message || toolError
+              // Log the specific error message
+            );
+            if (attempt < TOTAL_ATTEMPTS) {
+              console.log(`    Retrying in ${MCP_TOOL_RETRY_DELAY_MS}ms...`);
+              await delay(MCP_TOOL_RETRY_DELAY_MS);
+            } else {
+              console.error(
+                `❌ Tool "${toolName}" failed after ${TOTAL_ATTEMPTS} attempts. Last error:`,
+                lastToolError
+              );
+            }
+          }
+        }
+        if (success && mcpToolResult) {
           functionResponses.push({
             functionResponse: {
               name: toolName,
               response: {
                 content: typeof mcpToolResult.content === "string" ? mcpToolResult.content : JSON.stringify(mcpToolResult.content) || "Tool executed successfully."
+                // Fallback content
               }
             }
           });
-        } catch (toolError) {
-          console.error(
-            `Error calling MCP tool "${toolName}" via server "${serverKey}":`,
-            toolError
-          );
+        } else {
           functionResponses.push({
             functionResponse: {
               name: toolName,
               response: {
-                content: `Error executing tool ${toolName}: ${toolError.message || "Unknown error"}`
+                content: `Error executing tool ${toolName} after ${TOTAL_ATTEMPTS} attempts: ${(lastToolError == null ? void 0 : lastToolError.message) || "Unknown error during tool execution"}`
               }
             }
           });
         }
-      }
+      }));
       console.log(
         "Sending tool responses back to Gemini:",
         JSON.stringify(functionResponses)
@@ -76068,15 +76080,20 @@ const chatWithLLM = async (req2, res2) => {
     if ((_i = (_h = (_g = response2 == null ? void 0 : response2.candidates) == null ? void 0 : _g[0]) == null ? void 0 : _h.content) == null ? void 0 : _i.parts) {
       const textParts = response2.candidates[0].content.parts.filter((part) => typeof part.text === "string").map((part) => part.text);
       if (textParts.length > 0) {
-        finalAnswer = textParts.join("");
+        finalAnswer = textParts.join(" ");
+      } else if (!response2.candidates[0].finishReason || response2.candidates[0].finishReason === "STOP") {
+        console.log("Gemini finished, but no final text part was generated.");
       }
+    } else if ((_j = response2 == null ? void 0 : response2.promptFeedback) == null ? void 0 : _j.blockReason) {
+      finalAnswer = `My response was blocked. Reason: ${response2.promptFeedback.blockReason}`;
+      console.warn(`Gemini response blocked: ${response2.promptFeedback.blockReason}`, response2.promptFeedback);
     }
-    console.log("Final Gemini response:", finalAnswer);
+    console.log("Final Gemini response being sent to user:", finalAnswer);
     const finalHistory = await chat.getHistory();
     res2.json({ reply: finalAnswer, history: finalHistory });
   } catch (err) {
-    console.error("Error in chatWithLLM:", err);
-    res2.status(500).json({ error: `Failed in chat handler: ${err.message || "Unknown error"}` });
+    console.error("Error in chatWithLLM:", err.stack || err);
+    res2.status(500).json({ error: `Failed in chat handler: ${err.message || "Unknown server error"}` });
   }
 };
 const router$2 = express.Router();

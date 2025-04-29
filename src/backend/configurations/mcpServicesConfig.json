@@ -1,17 +1,28 @@
 {
   "leftList": [
     {
-      "label": "Google Drive",
-      "key": "gdrive",
+      "label": "Filesystem",
+      "key": "filesystem",
       "config": {
         "command": "npx",
         "args": [
           "-y",
-          "@modelcontextprotocol/server-gdrive"
-        ],
-        "env": {
-          "GDRIVE_CREDENTIALS_PATH": "/Users/muneerpuri/Desktop/.gdrive-server-credentials.json"
-        }
+          "@modelcontextprotocol/server-filesystem",
+          "/Users/muneerpuri/Desktop",
+          "/Users/muneerpuri/Downloads",
+          "/Users/muneerpuri/Documents"
+        ]
+      }
+    },
+    {
+      "label": "Puppeteer",
+      "key": "puppeteer",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-puppeteer"
+        ]
       }
     }
   ],
@@ -67,17 +78,17 @@
       }
     },
     {
-      "label": "Filesystem",
-      "key": "filesystem",
+      "label": "Google Drive",
+      "key": "gdrive",
       "config": {
         "command": "npx",
         "args": [
           "-y",
-          "@modelcontextprotocol/server-filesystem",
-          "/Users/muneerpuri/Desktop",
-          "/Users/muneerpuri/Downloads",
-          "/Users/muneerpuri/Documents"
-        ]
+          "@modelcontextprotocol/server-gdrive"
+        ],
+        "env": {
+          "GDRIVE_CREDENTIALS_PATH": "/Users/muneerpuri/Desktop/.gdrive-server-credentials.json"
+        }
       }
     },
     {
@@ -103,17 +114,6 @@
         "env": {
           "BRAVE_API_KEY": ""
         }
-      }
-    },
-    {
-      "label": "Puppeteer",
-      "key": "puppeteer",
-      "config": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-puppeteer"
-        ]
       }
     },
     {
