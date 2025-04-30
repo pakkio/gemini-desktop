@@ -1,5 +1,8 @@
-import { Box, TextField, IconButton, CircularProgress, Tooltip } from '@mui/material';
+import { Box, TextField, IconButton, CircularProgress, Tooltip, MenuItem, Button, Paper } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { useState } from 'react';
 
 interface Props {
     inputValue: string;
@@ -9,6 +12,22 @@ interface Props {
   }
 
 const MessageInput = ({ inputValue, setInputValue, isLoading, handleSubmit }: Props) => {
+  const [selectedModel, setSelectedModel] = useState('Model 1'); // Default model
+  const [isModelListOpen, setIsModelListOpen] = useState(false); // Track model list expansion
+
+  // Models for selection
+  const models = ['Model 1', 'Model 2', 'Model 3', 'Model 4'];
+
+  // Open/close the model list
+  const handleModelClick = () => {
+    setIsModelListOpen(!isModelListOpen);
+  };
+
+  const handleModelClose = (model: string) => {
+    setSelectedModel(model);
+    setIsModelListOpen(false); 
+  };
+
   // Handle Enter key press
   const handleKeyPress = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' && !event.shiftKey && !isLoading && inputValue.trim()) {
@@ -18,21 +37,45 @@ const MessageInput = ({ inputValue, setInputValue, isLoading, handleSubmit }: Pr
   };
 
   return (
-    // Use Box instead of form directly if needed, handle submit via button/enter key
-    <Box
-      // component="form" // Keep if you prefer form semantics
-      // onSubmit={handleSubmit}
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
-        p: 1, // Padding inside the input area box
-        // backgroundColor: 'background.paper', // Set in parent Box now
-        // borderRadius: '25px', // Round the whole input container
-        // border: 1,
-        // borderColor: 'divider',
-      }}
-    >
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {/* Model Selection Button and Chat Area */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        {/* Model Selection */}
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Button
+            variant="outlined"
+            onClick={handleModelClick}
+            sx={{
+              borderRadius: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '6px 12px', 
+            }}
+          >
+            {selectedModel}
+            {isModelListOpen ? (
+              <ExpandMoreIcon sx={{ ml: 1 }} />
+            ) : (
+              <ExpandLessIcon sx={{ ml: 1 }} />
+            )}
+          </Button>
+
+          {/* If the model list is open, show available models */}
+          {isModelListOpen && (
+            <Paper sx={{ position: 'absolute', zIndex: 100, bottom: '55px', left: '25px', width: 'auto' }}>
+              <Box sx={{ border: 1, borderRadius: '8px',borderColor: 'primary.main', boxShadow: 3, backgroundColor: 'background.paper' }}>
+                {models.map((model) => (
+                  <MenuItem key={model} onClick={() => handleModelClose(model)}>
+                    {model}
+                  </MenuItem>
+                ))}
+              </Box>
+            </Paper>
+          )}
+        </Box>
+
+        {/* Message Input Area */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
       <TextField
         fullWidth
         variant="outlined" // Or "filled" if preferred with the theme
@@ -74,8 +117,9 @@ const MessageInput = ({ inputValue, setInputValue, isLoading, handleSubmit }: Pr
             {isLoading ? <CircularProgress size={24} color="inherit" /> : <SendIcon />}
           </IconButton>
         </span>
-
       </Tooltip>
+        </Box>
+      </Box>
     </Box>
   );
 };
