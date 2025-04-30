@@ -6,10 +6,11 @@ import { useState, useRef, useEffect } from "react";
 import { get, post } from "../../utils/api_helper/api_helper"; // Adjust path if needed
 import { useNavigate } from "react-router-dom";
 import { ChatMessage } from "./types/types"; // Adjust path if needed
-import ChatHistorySidebar from './ChatHistorySidebar';
+import ChatHistorySidebar, { ChatHistory } from './ChatHistorySidebar';
 import { v4 as uuidv4 } from "uuid";
 
 export default function ChatPage() {
+  const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -151,6 +152,7 @@ export default function ChatPage() {
       const data = await post("/api/chat", {
         message: currentInput.trim(), // Use stored input
         history: historyForBackend,
+        model:selectedModel
       });
 
       if (data?.reply) {
@@ -238,6 +240,8 @@ export default function ChatPage() {
           setInputValue={setInputValue}
           handleSubmit={sendMessage}
           isLoading={isLoading}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
         />
         </Box>
       </Box>

@@ -19,7 +19,7 @@ const TOTAL_ATTEMPTS = 1 + MCP_TOOL_MAX_RETRIES; // Total number of attempts
 
 export const chatWithLLM = async (req: any, res: any) => {
   try {
-    const { message, history } = req.body;
+    const { message, history ,model} = req.body;
     if (!message) {
       res.status(400).json({ error: "Message is required" });
       return;
@@ -39,7 +39,7 @@ export const chatWithLLM = async (req: any, res: any) => {
       res.status(503).json({ error: "No MCP Servers are connected", allGeminiTools, mcpClients, toolToServerMap });
       return;
     }
-    const geminiModel = await initializeAndGetModel();
+    const geminiModel = await initializeAndGetModel(model);
     if (!geminiModel) {
       res.status(503).json({ error: "Server LLM not configured" });
       return;

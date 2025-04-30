@@ -75915,7 +75915,7 @@ const isDev$2 = process.env.NODE_ENV === "development";
 const __filename$2 = fileURLToPath(import.meta.url);
 const __dirname$3 = path$8.dirname(__filename$2);
 const configPath$2 = isDev$2 ? path$8.join(__dirname$3, "../src/backend/configurations/serverConfig.json") : path$8.join(app.getPath("userData"), "serverConfig.json");
-async function initializeAndGetModel() {
+async function initializeAndGetModel(model) {
   try {
     const data = fs$4.readFileSync(configPath$2, "utf-8");
     if (!data) {
@@ -75925,22 +75925,13 @@ async function initializeAndGetModel() {
     const { GEMINI_API_KEY } = serverConfigurations;
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const geminiModel = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction: `You are a helpful assistant that uses a defined set of tools (provided as function declarations) to fulfill user requests. You MUST format ALL of your responses using Markdown.
-
-**Your Workflow:**
-1.  **Analyze Request:** Understand the user's specific goal and identify the core action they want to perform.
-2.  **Identify Tool:** Consult the list of available function declarations. Find the single best tool whose name and description match the user's goal. Evaluate the tool's purpose carefully.
-3.  **Extract Parameters:** Identify ALL parameters required by the chosen tool's schema. Extract the necessary values from the user's request.
-4.  **Clarify if Needed:** If any *mandatory* parameters are missing from the user's request, **you MUST ask the user clarifying questions** to obtain the specific missing information. Be precise about what is needed (e.g., "To perform the '[tool_description]' action, I need the '[parameter_name]'. Could you please provide it?"). Do not attempt to call the function without all mandatory parameters.
-5.  **Execute Tool:** Once all mandatory parameters are gathered and confirmed, formulate and execute the function call precisely according to the tool's schema.
-6.  **Report Results:** Clearly present the results returned by the tool using Markdown formatting. If the tool execution indicates an error, failure, or an expected outcome like 'no results found', report that specific outcome accurately (e.g., "The tool reported: '[specific error message from tool]'." or "The search using '[parameter value]' returned no results."). Do not state a tool is simply 'unavailable' if an attempt was made or could be made with more information.
-7.  **No Tool Fallback:** If no available tool genuinely matches the user's core request, explicitly state that you do not have the capability using Markdown (e.g., "I cannot perform the action '[user's requested action]' as I don't have a suitable tool.").
-
-**Important Rules:**
-*   Strictly adhere to the capabilities defined in the provided function declarations. Do not invent tools or assume functionality.
-*   Always prioritize asking for missing mandatory parameters before attempting execution.
-*   Ensure all responses are formatted in Markdown.
+      model,
+      systemInstruction: `
+      You are expert assistant who makes full utilization of the available tools and make sure user gets what he requested for. You try to fulfill the request completely on your own by using various available tools. You always answer in **Markdown**.
+      1. user sends request.
+      2. you check for suitable tools to fulfill user request. if required call multiple tools to fulfill user request.
+      3. Make user interaction as less as possiible for solving user query.
+      4. Always reply in Markdown.
 `
     });
     return geminiModel;
@@ -75955,7 +75946,7 @@ const TOTAL_ATTEMPTS = 1 + MCP_TOOL_MAX_RETRIES;
 const chatWithLLM = async (req2, res2) => {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
   try {
-    const { message, history } = req2.body;
+    const { message, history, model } = req2.body;
     if (!message) {
       res2.status(400).json({ error: "Message is required" });
       return;
@@ -75971,7 +75962,7 @@ const chatWithLLM = async (req2, res2) => {
       res2.status(503).json({ error: "No MCP Servers are connected", allGeminiTools: allGeminiTools2, mcpClients: mcpClients2, toolToServerMap: toolToServerMap2 });
       return;
     }
-    const geminiModel = await initializeAndGetModel();
+    const geminiModel = await initializeAndGetModel(model);
     if (!geminiModel) {
       res2.status(503).json({ error: "Server LLM not configured" });
       return;
