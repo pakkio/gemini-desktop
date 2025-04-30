@@ -5,6 +5,10 @@ import {
   Part,
   FunctionCall,
   GenerateContentResponse,
+  GenerateContentResult, // Import this type
+  // If you have access to the specific ChatSession type, import it:
+  // import { ChatSession } from "@google/generative-ai";
+  // Otherwise, using 'any' for the chat parameter in the helper is acceptable
 } from "@google/generative-ai";
 import { connectToMcpServers } from "../../../utils/llmChat/getMcpTools";
 import { initializeAndGetModel } from "../../../llm/gemini";
@@ -12,16 +16,20 @@ import * as fs from 'fs/promises'; // Import Node.js filesystem promises API
 import * as path from 'path'; // Import Node.js path module
 
 // --- Configuration for Logging ---
-// Log files will be created in the project root directory (where the Node process is run from)
 const LOG_DIRECTORY = process.cwd();
 
 // --- Helper function for delay ---
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// --- Retry configuration ---
+// --- Retry configuration for MCP Tools ---
 const MCP_TOOL_MAX_RETRIES = 3; // Number of retries *after* the initial attempt
-const MCP_TOOL_RETRY_DELAY_MS = 1000; // Delay between retries in milliseconds (e.g., 1 second)
-const TOTAL_ATTEMPTS = 1 + MCP_TOOL_MAX_RETRIES; // Total number of attempts
+const MCP_TOOL_RETRY_DELAY_MS = 1000; // Delay between retries in milliseconds
+const TOTAL_MCP_TOOL_ATTEMPTS = 1 + MCP_TOOL_MAX_RETRIES;
+
+// --- Retry configuration for Gemini API Calls ---
+const GEMINI_API_MAX_RETRIES = 2; // Retry API calls 2 times after the initial attempt
+const GEMINI_API_RETRY_DELAY_MS = 1500; // Delay for API retries (slightly longer)
+const TOTAL_GEMINI_API_ATTEMPTS = 1 + GEMINI_API_MAX_RETRIES;
 
 
 /**
@@ -36,15 +44,11 @@ const TOTAL_ATTEMPTS = 1 + MCP_TOOL_MAX_RETRIES; // Total number of attempts
 const logChatInteraction = async (modelName: string, userQuery: string, chatbotResponse: string): Promise<void> => {
     let logFilePath = ''; // Define filePath outside try for use in catch
     try {
-        // 1. Sanitize model name for use as a filename (replace slashes, colons, etc., keep dots/hyphens)
-        // Also remove any trailing dots that might cause issues on some systems.
         const sanitizedModelName = modelName.replace(/[^a-z0-9_\-\.]/gi, '_').replace(/\.+$/, '');
-        // Ensure a default name if sanitization somehow results in an empty string
         const safeModelName = sanitizedModelName || 'unknown_model';
-        const logFileName = `${safeModelName}.log`; // Use model name + .log extension
-        logFilePath = path.join(LOG_DIRECTORY, logFileName); // Join root dir and filename
+        const logFileName = `${safeModelName}.log`;
+        logFilePath = path.join(LOG_DIRECTORY, logFileName);
 
-        // 2. Format the Log Entry
         const logEntry = `
 ============================================================
 Model: ${modelName}
@@ -55,52 +59,99 @@ ${userQuery}
 Chatbot Response:
 ${chatbotResponse}
 ============================================================
-\n`; // Add extra newline for spacing between entries
+\n`;
 
-        // 3. Append to the Log File in the root directory
-        // No need to explicitly create LOG_DIRECTORY as process.cwd() should exist
         await fs.appendFile(logFilePath, logEntry, 'utf8');
         console.log(`Chat interaction logged successfully to ${logFilePath}`);
 
     } catch (logError) {
         console.error(`[Log Error] Failed to write chat interaction to log file '${logFilePath || `${modelName}.log`}':`, logError);
-        // Log the error but don't crash the main request handler
     }
 };
 
+/**
+ * Helper function to send messages to the Gemini API with retry logic
+ * specifically for transient errors like 500 Internal Server Error.
+ *
+ * @param chat - The ChatSession object from the Gemini SDK. Use 'any' if type is unavailable.
+ * @param messageToSend - The message content (string, Part, or array).
+ * @param attemptInfo - A description of the call (e.g., "initial user message", "tool responses") for logging.
+ * @returns The result from chat.sendMessage.
+ * @throws The last error encountered if all retry attempts fail.
+ */
+async function sendMessageWithRetry(
+    chat: any, // Replace 'any' with 'ChatSession' if imported
+    messageToSend: string | Part | Array<string | Part>,
+    attemptInfo: string
+): Promise<GenerateContentResult> {
+    let attempt = 0;
+    let lastError: any = null;
+
+    while (attempt < TOTAL_GEMINI_API_ATTEMPTS) {
+        attempt++;
+        try {
+            console.log(`  [API Attempt ${attempt}/${TOTAL_GEMINI_API_ATTEMPTS}] Sending ${attemptInfo} to Gemini...`);
+            const result = await chat.sendMessage(messageToSend);
+
+            // Optional: Check for non-error responses that still indicate issues (e.g., blocked content)
+            if (result.response?.promptFeedback?.blockReason) {
+                 console.warn(`  [API Attempt ${attempt}] Gemini response potentially blocked: ${result.response.promptFeedback.blockReason}. Proceeding as API call succeeded.`);
+                 // Decide if you want to retry block errors - currently not retrying them here.
+            }
+
+            console.log(`  [API Attempt ${attempt}] SUCCESS sending ${attemptInfo}.`);
+            return result; // Success!
+
+        } catch (error: any) {
+            lastError = error;
+            console.warn(`  [API Attempt ${attempt}/${TOTAL_GEMINI_API_ATTEMPTS}] FAILED sending ${attemptInfo}. Error:`, error.message || error);
+
+            // Check if it's a potentially retryable error (e.g., 5xx errors).
+            // The SDK might wrap errors, so checking message content is often necessary.
+            const isRetryable = error.message?.includes('500 Internal Server Error') ||
+                                error.message?.includes('503 Service Unavailable') || // Add other retryable conditions if needed
+                                error.message?.includes('fetch failed') || // Network errors
+                                error.message?.includes('timeout'); // Timeout errors
+
+            if (isRetryable && attempt < TOTAL_GEMINI_API_ATTEMPTS) {
+                console.log(`    Retrying Gemini API call in ${GEMINI_API_RETRY_DELAY_MS}ms...`);
+                await delay(GEMINI_API_RETRY_DELAY_MS);
+            } else {
+                 console.error(`❌ Gemini API call for ${attemptInfo} failed after ${attempt} attempts. Not retrying or max retries reached.`);
+                 throw lastError; // Rethrow the last error to be caught by the main handler
+            }
+        }
+    }
+    // This line should theoretically not be reached due to the throw in the loop, but satisfies TypeScript
+    throw lastError || new Error(`Gemini API call failed after ${TOTAL_GEMINI_API_ATTEMPTS} attempts for ${attemptInfo}, but no error was captured.`);
+}
+
 
 export const chatWithLLM = async (req: any, res: any) => {
-  // --- Extract necessary data early ---
-  const { message, history, model: modelName } = req.body; // Renamed 'model' to 'modelName' for clarity
+  const { message, history, model: modelName } = req.body;
 
-  // --- Input Validation ---
   if (!message) {
     return res.status(400).json({ error: "Message is required" });
   }
   if (!modelName) {
-    // Crucial for logging and initialization
-    return res.status(400).json({ error: "Model name ('model') is required in the request body" });
+    return res.status(400).json({ error: "Model name ('model') is required" });
   }
 
   try {
     // --- Tool and MCP Server Setup ---
     const { allGeminiTools, mcpClients, toolToServerMap } = await connectToMcpServers();
 
-    console.log(
-      "Tools configured for Gemini:",
-      allGeminiTools.map(t => t.name)
-    );
+    console.log("Tools configured for Gemini:", allGeminiTools.map(t => t.name));
     console.log("Connected MCP Clients:", Array.from(mcpClients.keys()));
-    console.log("Tool to Server Map:", Object.fromEntries(toolToServerMap));
-    
-    if (mcpClients.size === 0 && allGeminiTools.length === 0) { // Only error if tools were expected but no servers connected
+    // console.log("Tool to Server Map:", Object.fromEntries(toolToServerMap)); // Can be verbose
+
+    if (mcpClients.size === 0 && allGeminiTools.length > 0) {
      console.warn("Warning: Tools defined but no MCP Servers are connected.");
-     // Decide if this should be a blocking error or just a warning
-     return res.status(503).json({ error: "Tools require MCP Servers, but none are connected.", allGeminiTools });
+     return res.status(503).json({ error: "Tools require MCP Servers, but none are connected.", toolNames: allGeminiTools.map(t => t.name) });
     }
 
     // --- Initialize LLM ---
-    const geminiModel = await initializeAndGetModel(modelName); // Use modelName here
+    const geminiModel = await initializeAndGetModel(modelName);
     if (!geminiModel) {
       return res.status(503).json({ error: `Server LLM '${modelName}' not configured or failed to initialize` });
     }
@@ -114,14 +165,12 @@ export const chatWithLLM = async (req: any, res: any) => {
           : undefined,
     });
 
-    // --- Send Initial Message ---
-    let result = await chat.sendMessage(message);
+    // --- Send Initial Message (with Retry) ---
+    let result: GenerateContentResult = await sendMessageWithRetry(chat, message, "initial user message");
     let response: GenerateContentResponse | undefined = result.response;
 
-    let currentContent: Content | undefined =
-      response?.candidates?.[0]?.content;
-    let functionCallsToProcess: FunctionCall[] | undefined =
-      currentContent?.parts
+    let currentContent: Content | undefined = response?.candidates?.[0]?.content;
+    let functionCallsToProcess: FunctionCall[] | undefined = currentContent?.parts
         ?.filter((part: Part) => !!part.functionCall)
         .map((part: Part) => part.functionCall as FunctionCall);
 
@@ -142,81 +191,99 @@ export const chatWithLLM = async (req: any, res: any) => {
         const targetClient = serverKey ? mcpClients.get(serverKey) : undefined;
 
         if (!targetClient) {
-          console.error(
-            `❌ Tool "${toolName}" requested by Gemini, but no connected MCP client provides it or the client is down (Server Key: ${serverKey || 'Not Found'}).`
-          );
+          console.error(`❌ Tool "${toolName}" requested, but no connected/mapped MCP client found (Server Key: ${serverKey || 'Not Found'}).`);
           functionResponses.push({
             functionResponse: {
               name: toolName,
-              response: {
-                content: `Error: Tool "${toolName}" could not be routed to a server. It might be unavailable or the mapping failed.`,
-              },
+              response: { content: `Error: Tool "${toolName}" could not be routed. Unavailable or mapping failed.` },
             },
           });
           return;
         }
 
-        console.log(
-          `Attempting MCP tool "${toolName}" via server "${serverKey}" with args:`,
-          toolArgs
-        );
+        console.log(`Attempting MCP tool "${toolName}" via server "${serverKey}" with args:`, toolArgs);
 
-        // --- Retry Logic for Tool Call ---
+        // --- Retry Logic for Specific Tool Call ---
         let attempt = 0;
         let success = false;
         let mcpToolResult: any = null;
         let lastToolError: any = null;
 
-        while (attempt < TOTAL_ATTEMPTS && !success) {
+        while (attempt < TOTAL_MCP_TOOL_ATTEMPTS && !success) {
           attempt++;
           try {
-            console.log(`  [Attempt ${attempt}/${TOTAL_ATTEMPTS}] Calling tool "${toolName}"...`);
+            console.log(`  [MCP Tool Attempt ${attempt}/${TOTAL_MCP_TOOL_ATTEMPTS}] Calling tool "${toolName}"...`);
             mcpToolResult = await targetClient.callTool({
               name: toolName,
               arguments: toolArgs as { [x: string]: unknown } | undefined,
             });
-            console.log(`  [Attempt ${attempt}] SUCCESS for tool "${toolName}". Response:`, mcpToolResult);
+            console.log(`  [MCP Tool Attempt ${attempt}] SUCCESS for tool "${toolName}". Raw Response:`, mcpToolResult); // Log raw response
             success = true;
 
           } catch (toolError: any) {
             lastToolError = toolError;
-            console.warn(
-              `  [Attempt ${attempt}/${TOTAL_ATTEMPTS}] FAILED for tool "${toolName}" via server "${serverKey}". Error:`,
-              toolError.message || toolError
-            );
-
-            if (attempt < TOTAL_ATTEMPTS) {
-              console.log(`    Retrying in ${MCP_TOOL_RETRY_DELAY_MS}ms...`);
+            console.warn(`  [MCP Tool Attempt ${attempt}/${TOTAL_MCP_TOOL_ATTEMPTS}] FAILED for tool "${toolName}". Error:`, toolError.message || toolError);
+            if (attempt < TOTAL_MCP_TOOL_ATTEMPTS) {
+              console.log(`    Retrying MCP tool call in ${MCP_TOOL_RETRY_DELAY_MS}ms...`);
               await delay(MCP_TOOL_RETRY_DELAY_MS);
             } else {
-               console.error(
-                 `❌ Tool "${toolName}" failed after ${TOTAL_ATTEMPTS} attempts. Last error:`,
-                 lastToolError
-               );
+               console.error(`❌ MCP Tool "${toolName}" failed after ${TOTAL_MCP_TOOL_ATTEMPTS} attempts. Last error:`, lastToolError);
             }
           }
-        } // End retry while loop
+        } // End MCP tool retry loop
 
-        // --- Process Tool Call Result ---
+        // --- Process Tool Call Result (and simplify content) ---
         if (success && mcpToolResult) {
-          functionResponses.push({
-            functionResponse: {
-              name: toolName,
-              response: {
-                content:
-                  typeof mcpToolResult.content === "string"
-                    ? mcpToolResult.content
-                    : JSON.stringify(mcpToolResult.content) ||
-                      "Tool executed successfully.",
-              },
-            },
-          });
+            let responseContent: any = "Tool executed successfully but produced no specific content."; // Default if simplification fails
+
+            // --- Attempt to simplify content before sending back ---
+            try {
+                if (typeof mcpToolResult.content === "string") {
+                    responseContent = mcpToolResult.content;
+                } else if (Array.isArray(mcpToolResult.content) && mcpToolResult.content.length > 0) {
+                    // Attempt to extract text if it's an array of objects like { type: 'text', text: '...' }
+                    const texts = mcpToolResult.content
+                        .map((part: any) => (part && typeof part.text === 'string' ? part.text : null))
+                        .filter((text: string | null): text is string => text !== null); // Filter out nulls
+
+                    if (texts.length > 0) {
+                        responseContent = texts.join('\n'); // Join multiple text parts
+                    } else {
+                        // If no text parts found, stringify the original array
+                        responseContent = JSON.stringify(mcpToolResult.content);
+                    }
+                } else if (mcpToolResult.content !== null && mcpToolResult.content !== undefined) {
+                    // Fallback for other non-null/undefined object/primitive types
+                    responseContent = JSON.stringify(mcpToolResult.content);
+                }
+                // If mcpToolResult.content was null or undefined, the default message remains
+            } catch (parseError) {
+               console.error(`Error simplifying tool response content for "${toolName}", falling back to stringify:`, parseError);
+               // Fallback to stringifying the original content if simplification logic errors
+               try {
+                 responseContent = JSON.stringify(mcpToolResult.content);
+               } catch (stringifyError) {
+                 console.error(`Failed even to stringify tool content for "${toolName}":`, stringifyError);
+                 responseContent = `Error: Could not process tool response content. Type: ${typeof mcpToolResult.content}`;
+               }
+            }
+            // --- End simplification ---
+
+            console.log(`  Simplified/Prepared content for "${toolName}":`, responseContent); // Log the content being sent back
+
+            functionResponses.push({
+                functionResponse: {
+                    name: toolName,
+                    response: { content: responseContent }, // Use the simplified/stringified content
+                },
+            });
         } else {
+          // Handle tool call failure after retries
           functionResponses.push({
             functionResponse: {
               name: toolName,
               response: {
-                content: `Error executing tool ${toolName} after ${TOTAL_ATTEMPTS} attempts: ${
+                content: `Error executing tool ${toolName} after ${TOTAL_MCP_TOOL_ATTEMPTS} attempts: ${
                   lastToolError?.message || "Unknown error during tool execution"
                 }`,
               },
@@ -225,13 +292,18 @@ export const chatWithLLM = async (req: any, res: any) => {
         }
       })); // End Promise.all map function
 
-      // --- Send Tool Responses back to LLM ---
-      console.log(
-        "Sending tool responses back to Gemini:",
-        JSON.stringify(functionResponses)
-      );
-      result = await chat.sendMessage(functionResponses);
-      response = result.response;
+      // --- Send Tool Responses back to LLM (with Retry) ---
+      console.log("Attempting to send tool responses back to Gemini:", JSON.stringify(functionResponses));
+      // Wrap the send message call in a try-catch specifically for this step,
+      // although sendMessageWithRetry also throws on final failure.
+      try {
+          result = await sendMessageWithRetry(chat, functionResponses, "tool responses");
+          response = result.response;
+      } catch (sendError) {
+          console.error("FATAL: Failed to send tool responses to Gemini even after retries.", sendError);
+          // Rethrow the error to be caught by the main try/catch block
+          throw sendError;
+      }
 
       // --- Check for more function calls ---
       currentContent = response?.candidates?.[0]?.content;
@@ -241,28 +313,38 @@ export const chatWithLLM = async (req: any, res: any) => {
     } // End while loop for processing function calls
 
     // --- Extract Final Text Answer ---
-    let finalAnswer = "Sorry, I could not generate a text response."; // Default message
+    let finalAnswer = "Sorry, I encountered an issue and could not generate a final response."; // Default message
     if (response?.candidates?.[0]?.content?.parts) {
         const textParts = response.candidates[0].content.parts
           .filter((part: Part): part is Part & { text: string } => typeof part.text === 'string')
           .map((part) => part.text);
+
         if (textParts.length > 0) {
-          finalAnswer = textParts.join(" ");
-        } else if (!response.candidates[0].finishReason || response.candidates[0].finishReason === 'STOP') {
-           console.log("Gemini finished, but no final text part was generated.");
-           // Keep the default "Sorry..." message or adjust as needed
+          finalAnswer = textParts.join(" "); // Join multiple text parts if any
+        } else if (response.candidates[0].finishReason === 'STOP' || !response.candidates[0].finishReason) {
+           // If it stopped normally but produced no text (e.g., only function calls happened?)
+           console.log("Gemini finished (or finish reason unclear), but no final text part was generated.");
+           // Keep default sorry message or adjust. Maybe check if function calls were just made?
+           // If functionResponses is not empty from the last loop, maybe say "Tool action completed."
+           // For simplicity, we keep the "Sorry..." message for now.
+        } else {
+            // Handle other finish reasons if needed
+             finalAnswer = `Processing stopped. Reason: ${response.candidates[0].finishReason}`;
+             console.warn(`Gemini stopped with reason: ${response.candidates[0].finishReason}`, response.candidates[0]);
         }
     } else if (response?.promptFeedback?.blockReason) {
         finalAnswer = `My response was blocked. Reason: ${response.promptFeedback.blockReason}`;
         console.warn(`Gemini response blocked: ${response.promptFeedback.blockReason}`, response.promptFeedback);
+    } else if (!response) {
+        // This case might happen if the initial sendMessageWithRetry failed entirely
+        finalAnswer = "Sorry, there was a problem communicating with the AI model.";
+        console.error("No response object available after chat completion attempts.");
     }
 
     console.log("Final Gemini response being sent to user:", finalAnswer);
 
-    // --- *** LOG THE INTERACTION *** ---
-    // Log the original user message and the final computed answer to the root directory
+    // --- Log the interaction ---
     await logChatInteraction(modelName, message, finalAnswer);
-    // ---------------------------------
 
     // --- Send Response to Client ---
     const finalHistory = await chat.getHistory();
@@ -270,14 +352,13 @@ export const chatWithLLM = async (req: any, res: any) => {
 
   } catch (err: any) {
     console.error("Error in chatWithLLM:", err.stack || err);
-    // --- Attempt to Log Error Scenario ---
-    // Even if the main chat flow failed, try to log what we have to the root dir
+    // Attempt to log the error scenario
     await logChatInteraction(
-      modelName || 'unknown_model_on_error', // Use a distinct name if modelName was missing
-      message || 'unknown_query',   // Use 'unknown_query' if message wasn't available
-      `Error during processing: ${err.message || 'Unknown server error'}` // Log the error message as the response
+      modelName || 'unknown_model_on_error',
+      message || 'unknown_query_on_error',
+      `Error during processing: ${err.message || 'Unknown server error'}`
     );
-    // -------------------------------------
+    // Send error response
     res.status(500).json({ error: `Failed in chat handler: ${err.message || 'Unknown server error'}` });
   }
 };
