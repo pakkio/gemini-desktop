@@ -703,9 +703,9 @@ export default function SettingsPage() {
           >
            {isLoading && !error ? 'Saving...' : 'Save Changes'} {/* Indicate saving state */}
         </Button>
-        <Button variant="outlined" onClick={() => navigate("/")} disabled={isLoading}>
+       <a href="/"> <Button variant="outlined" type="button" disabled={isLoading}>
           Back to Home
-        </Button>
+        </Button> </a>
          {/* Optional: Add back Configure New Server button if needed */}
          {/* <Button
            variant="contained"

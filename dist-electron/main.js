@@ -25896,10 +25896,17 @@ var implementation$1 = function bind(that) {
 var implementation = implementation$1;
 var functionBind = Function.prototype.bind || implementation;
 var functionCall = Function.prototype.call;
-var functionApply = Function.prototype.apply;
+var functionApply;
+var hasRequiredFunctionApply;
+function requireFunctionApply() {
+  if (hasRequiredFunctionApply) return functionApply;
+  hasRequiredFunctionApply = 1;
+  functionApply = Function.prototype.apply;
+  return functionApply;
+}
 var reflectApply = typeof Reflect !== "undefined" && Reflect && Reflect.apply;
 var bind$2 = functionBind;
-var $apply$1 = functionApply;
+var $apply$1 = requireFunctionApply();
 var $call$2 = functionCall;
 var $reflectApply = reflectApply;
 var actualApply = $reflectApply || bind$2.call($call$2, $apply$1);
@@ -26019,7 +26026,7 @@ var hasSymbols = requireHasSymbols()();
 var getProto = requireGetProto();
 var $ObjectGPO = requireObject_getPrototypeOf();
 var $ReflectGPO = requireReflect_getPrototypeOf();
-var $apply = functionApply;
+var $apply = requireFunctionApply();
 var $call = functionCall;
 var needsEval = {};
 var TypedArray = typeof Uint8Array === "undefined" || !getProto ? undefined$1 : getProto(Uint8Array);
@@ -75981,8 +75988,9 @@ const chatWithLLM = async (req2, res2) => {
     );
     console.log("Connected MCP Clients:", Array.from(mcpClients2.keys()));
     console.log("Tool to Server Map:", Object.fromEntries(toolToServerMap2));
-    if (mcpClients2.size === 0 && allGeminiTools2.length > 0) {
+    if (mcpClients2.size === 0 && allGeminiTools2.length === 0) {
       console.warn("Warning: Tools defined but no MCP Servers are connected.");
+      return res2.status(503).json({ error: "Tools require MCP Servers, but none are connected.", allGeminiTools: allGeminiTools2 });
     }
     const geminiModel = await initializeAndGetModel(modelName);
     if (!geminiModel) {
@@ -77605,7 +77613,7 @@ function createWindow() {
       preload: path$9.join(__dirname, "preload.mjs"),
       contextIsolation: true,
       nodeIntegration: true,
-      devTools: true
+      devTools: false
       // ✅ explicitly enable devTools
     }
   });
