@@ -1,7 +1,8 @@
 import { app, BrowserWindow, ipcMain, screen } from "electron";
 import { fileURLToPath as fileURLToPath$1 } from "node:url";
 import path$9 from "node:path";
-import path$8 from "path";
+import * as path$8 from "path";
+import path__default from "path";
 import require$$1$1 from "tty";
 import require$$1$2 from "util";
 import require$$0$6 from "os";
@@ -13,12 +14,13 @@ import require$$0$8, { fileURLToPath } from "url";
 import require$$2$1 from "node:fs";
 import require$$2$2 from "node:http";
 import require$$0$9 from "crypto";
-import fs$4 from "fs";
+import fs$5 from "fs";
 import require$$6$1 from "querystring";
 import require$$1$4 from "node:net";
 import require$$0$a from "stream";
 import require$$0$b from "child_process";
 import process$2 from "node:process";
+import * as fs$4 from "fs/promises";
 import require$$0$c from "assert";
 import require$$2$3 from "events";
 import { userInfo } from "node:os";
@@ -34,7 +36,7 @@ var httpErrors = { exports: {} };
  * Copyright(c) 2014-2018 Douglas Christopher Wilson
  * MIT Licensed
  */
-var relative = path$8.relative;
+var relative = path__default.relative;
 var depd_1 = depd;
 var basePath = process.cwd();
 function containsNamespace(str, namespace) {
@@ -24536,7 +24538,7 @@ var mimeScore$3 = function mimeScore(mimeType, source = "default") {
  */
 (function(exports) {
   var db = mimeDb$3;
-  var extname2 = path$8.extname;
+  var extname2 = path__default.extname;
   var mimeScore6 = mimeScore$3;
   var EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/;
   var TEXT_TYPE_REGEXP = /^text\//i;
@@ -25894,17 +25896,10 @@ var implementation$1 = function bind(that) {
 var implementation = implementation$1;
 var functionBind = Function.prototype.bind || implementation;
 var functionCall = Function.prototype.call;
-var functionApply;
-var hasRequiredFunctionApply;
-function requireFunctionApply() {
-  if (hasRequiredFunctionApply) return functionApply;
-  hasRequiredFunctionApply = 1;
-  functionApply = Function.prototype.apply;
-  return functionApply;
-}
+var functionApply = Function.prototype.apply;
 var reflectApply = typeof Reflect !== "undefined" && Reflect && Reflect.apply;
 var bind$2 = functionBind;
-var $apply$1 = requireFunctionApply();
+var $apply$1 = functionApply;
 var $call$2 = functionCall;
 var $reflectApply = reflectApply;
 var actualApply = $reflectApply || bind$2.call($call$2, $apply$1);
@@ -26024,7 +26019,7 @@ var hasSymbols = requireHasSymbols()();
 var getProto = requireGetProto();
 var $ObjectGPO = requireObject_getPrototypeOf();
 var $ReflectGPO = requireReflect_getPrototypeOf();
-var $apply = requireFunctionApply();
+var $apply = functionApply;
 var $call = functionCall;
 var needsEval = {};
 var TypedArray = typeof Uint8Array === "undefined" || !getProto ? undefined$1 : getProto(Uint8Array);
@@ -27748,7 +27743,7 @@ var utils = {};
  */
 var etag_1 = etag$1;
 var crypto$1 = require$$0$9;
-var Stats = fs$4.Stats;
+var Stats = fs$5.Stats;
 var toString = Object.prototype.toString;
 function entitytag(entity) {
   if (entity.length === 0) {
@@ -39477,7 +39472,7 @@ var mimeScore$2 = function mimeScore2(mimeType, source = "default") {
  */
 (function(exports) {
   var db = mimeDb$2;
-  var extname2 = path$8.extname;
+  var extname2 = path__default.extname;
   var mimeScore6 = mimeScore$2;
   var EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/;
   var TEXT_TYPE_REGEXP = /^text\//i;
@@ -54070,7 +54065,7 @@ var mimeScore$1 = function mimeScore3(mimeType, source = "default") {
  */
 (function(exports) {
   var db = mimeDb$1;
-  var extname2 = path$8.extname;
+  var extname2 = path__default.extname;
   var mimeScore6 = mimeScore$1;
   var EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/;
   var TEXT_TYPE_REGEXP = /^text\//i;
@@ -54615,7 +54610,7 @@ var safeBufferExports = safeBuffer.exports;
  */
 contentDisposition$2.exports = contentDisposition$1;
 contentDisposition$2.exports.parse = parse$5;
-var basename = path$8.basename;
+var basename = path__default.basename;
 var Buffer$1 = safeBufferExports.Buffer;
 var ENCODE_URL_ATTR_CHAR_REGEXP = /[\x00-\x20"'()*,/:;<=>?@[\\\]{}\x7f]/g;
 var HEX_ESCAPE_REGEXP = /%[0-9A-Fa-f]{2}/;
@@ -66648,7 +66643,7 @@ var mimeScore4 = function mimeScore5(mimeType, source = "default") {
  */
 (function(exports) {
   var db = mimeDb;
-  var extname2 = path$8.extname;
+  var extname2 = path__default.extname;
   var mimeScore$12 = mimeScore4;
   var EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/;
   var TEXT_TYPE_REGEXP = /^text\//i;
@@ -66760,12 +66755,12 @@ var encodeUrl$1 = encodeurl;
 var escapeHtml$1 = escapeHtml_1;
 var etag = etag_1;
 var fresh = fresh_1;
-var fs$2 = fs$4;
+var fs$2 = fs$5;
 var mime$1 = mimeTypes;
 var ms = ms$1;
 var onFinished$1 = onFinishedExports;
 var parseRange = rangeParser_1;
-var path$6 = path$8;
+var path$6 = path__default;
 var statuses$1 = statuses$3;
 var Stream = require$$0$a;
 var util$1 = require$$1$2;
@@ -67774,7 +67769,7 @@ function requireServeStatic() {
   var encodeUrl2 = encodeurl;
   var escapeHtml2 = escapeHtml_1;
   var parseUrl2 = parseurlExports;
-  var resolve3 = path$8.resolve;
+  var resolve3 = path__default.resolve;
   var send4 = send_1;
   var url2 = require$$0$8;
   serveStatic_1 = serveStatic;
@@ -68199,8 +68194,8 @@ const version$1 = "16.5.0";
 const require$$4 = {
   version: version$1
 };
-const fs$1 = fs$4;
-const path$4 = path$8;
+const fs$1 = fs$5;
+const path$4 = path__default;
 const os$1 = require$$0$6;
 const crypto = require$$0$9;
 const packageJson = require$$4;
@@ -68463,15 +68458,15 @@ main$1.exports = DotenvModule;
 var mainExports = main$1.exports;
 const dotenv = /* @__PURE__ */ getDefaultExportFromCjs(mainExports);
 const __filename$4 = fileURLToPath(import.meta.url);
-const __dirname$5 = path$8.dirname(__filename$4);
+const __dirname$5 = path__default.dirname(__filename$4);
 const isDev$4 = process.env.NODE_ENV === "development";
-const configPath$4 = isDev$4 ? path$8.join(__dirname$5, "../src/backend/configurations/mcpServicesConfig.json") : path$8.join(app.getPath("userData"), "mcpServicesConfig.json");
+const configPath$4 = isDev$4 ? path__default.join(__dirname$5, "../src/backend/configurations/mcpServicesConfig.json") : path__default.join(app.getPath("userData"), "mcpServicesConfig.json");
 const getServicesConfig = (_, res2) => {
   try {
-    if (!fs$4.existsSync(configPath$4)) {
+    if (!fs$5.existsSync(configPath$4)) {
       return res2.status(400).json({ error: "No data saved yet" });
     }
-    const data = fs$4.readFileSync(configPath$4, "utf-8");
+    const data = fs$5.readFileSync(configPath$4, "utf-8");
     if (!data) {
       return res2.status(400).json({ error: "No data saved yet" });
     }
@@ -68482,17 +68477,17 @@ const getServicesConfig = (_, res2) => {
   }
 };
 const __filename$3 = fileURLToPath(import.meta.url);
-const __dirname$4 = path$8.dirname(__filename$3);
+const __dirname$4 = path__default.dirname(__filename$3);
 const isDev$3 = process.env.NODE_ENV === "development";
-const configPath$3 = isDev$3 ? path$8.join(__dirname$4, "../src/backend/configurations/mcpServicesConfig.json") : path$8.join(app.getPath("userData"), "mcpServicesConfig.json");
+const configPath$3 = isDev$3 ? path__default.join(__dirname$4, "../src/backend/configurations/mcpServicesConfig.json") : path__default.join(app.getPath("userData"), "mcpServicesConfig.json");
 const saveServicesConfig = (req2, res2) => {
   try {
     const data = req2.body;
-    const dirPath = path$8.dirname(configPath$3);
-    if (!fs$4.existsSync(dirPath)) {
-      fs$4.mkdirSync(dirPath, { recursive: true });
+    const dirPath = path__default.dirname(configPath$3);
+    if (!fs$5.existsSync(dirPath)) {
+      fs$5.mkdirSync(dirPath, { recursive: true });
     }
-    fs$4.writeFileSync(configPath$3, JSON.stringify(data, null, 2));
+    fs$5.writeFileSync(configPath$3, JSON.stringify(data, null, 2));
     return res2.json(data);
   } catch (err) {
     res2.status(500).json({ error: "Failed to save config.", message: err.message });
@@ -75152,7 +75147,7 @@ function requireWindows() {
   hasRequiredWindows = 1;
   windows = isexe2;
   isexe2.sync = sync2;
-  var fs2 = fs$4;
+  var fs2 = fs$5;
   function checkPathExt(path3, options) {
     var pathext = options.pathExt !== void 0 ? options.pathExt : process.env.PATHEXT;
     if (!pathext) {
@@ -75193,7 +75188,7 @@ function requireMode() {
   hasRequiredMode = 1;
   mode = isexe2;
   isexe2.sync = sync2;
-  var fs2 = fs$4;
+  var fs2 = fs$5;
   function isexe2(path3, options, cb) {
     fs2.stat(path3, function(er, stat) {
       cb(er, er ? false : checkStat(stat, options));
@@ -75269,7 +75264,7 @@ function sync(path3, options) {
   }
 }
 const isWindows = process.platform === "win32" || process.env.OSTYPE === "cygwin" || process.env.OSTYPE === "msys";
-const path$3 = path$8;
+const path$3 = path__default;
 const COLON = isWindows ? ";" : ":";
 const isexe = isexe_1;
 const getNotFoundError = (cmd) => Object.assign(new Error(`not found: ${cmd}`), { code: "ENOENT" });
@@ -75371,7 +75366,7 @@ const pathKey = (options = {}) => {
 pathKey$1.exports = pathKey;
 pathKey$1.exports.default = pathKey;
 var pathKeyExports = pathKey$1.exports;
-const path$2 = path$8;
+const path$2 = path__default;
 const which = which_1;
 const getPathKey = pathKeyExports;
 function resolveCommandAttempt(parsed, withoutPathExt) {
@@ -75439,7 +75434,7 @@ var shebangCommand$1 = (string = "") => {
   }
   return argument ? `${binary} ${argument}` : binary;
 };
-const fs = fs$4;
+const fs = fs$5;
 const shebangCommand = shebangCommand$1;
 function readShebang$1(command2) {
   const size = 150;
@@ -75454,7 +75449,7 @@ function readShebang$1(command2) {
   return shebangCommand(buffer.toString());
 }
 var readShebang_1 = readShebang$1;
-const path$1 = path$8;
+const path$1 = path__default;
 const resolveCommand = resolveCommand_1;
 const escape$1 = _escape;
 const readShebang = readShebang_1;
@@ -75735,9 +75730,9 @@ const toolToServerMap = /* @__PURE__ */ new Map();
 let allMcpTools = [];
 let allGeminiTools = [];
 const isPackaged = app.isPackaged;
-const logPath = path$8.join(app.getPath("userData"), "backend.log");
+const logPath = path__default.join(app.getPath("userData"), "backend.log");
 try {
-  fs$4.mkdirSync(path$8.dirname(logPath), { recursive: true });
+  fs$5.mkdirSync(path__default.dirname(logPath), { recursive: true });
 } catch (e) {
   console.error("Failed to create log directory:", e);
 }
@@ -75747,7 +75742,7 @@ function logToFile(message) {
   const logLine = `${timestamp} ${messageString}
 `;
   try {
-    fs$4.appendFileSync(logPath, logLine);
+    fs$5.appendFileSync(logPath, logLine);
     if (!isPackaged) {
       console.log(`${timestamp} ${messageString}`);
     }
@@ -75767,8 +75762,8 @@ try {
 }
 async function connectToMcpServers() {
   const __filename2 = fileURLToPath(import.meta.url);
-  const __dirname2 = path$8.dirname(__filename2);
-  const configPath2 = isPackaged ? path$8.join(app.getPath("userData"), "mcpServicesConfig.json") : path$8.join(__dirname2, "../src/backend/configurations/mcpServicesConfig.json");
+  const __dirname2 = path__default.dirname(__filename2);
+  const configPath2 = isPackaged ? path__default.join(app.getPath("userData"), "mcpServicesConfig.json") : path__default.join(__dirname2, "../src/backend/configurations/mcpServicesConfig.json");
   logToFile(`--- Starting connectToMcpServers ---`);
   logToFile(`Running in ${isPackaged ? "packaged" : "development"} mode.`);
   logToFile(`Attempting to load MCP config from: ${configPath2}`);
@@ -75778,11 +75773,11 @@ async function connectToMcpServers() {
   allGeminiTools = [];
   let data;
   try {
-    if (isPackaged && !fs$4.existsSync(configPath2)) {
+    if (isPackaged && !fs$5.existsSync(configPath2)) {
       logToFile(`⚠️ MCP config file not found at ${configPath2}. Creating default or skipping.`);
       return { allGeminiTools: [], mcpClients: /* @__PURE__ */ new Map(), toolToServerMap: /* @__PURE__ */ new Map() };
     }
-    data = fs$4.readFileSync(configPath2, "utf-8");
+    data = fs$5.readFileSync(configPath2, "utf-8");
   } catch (readError) {
     logToFile(`❌ Failed to read MCP config file at ${configPath2}: ${readError.message}`);
     return { allGeminiTools: [], mcpClients: /* @__PURE__ */ new Map(), toolToServerMap: /* @__PURE__ */ new Map() };
@@ -75913,11 +75908,11 @@ Stack: ${e.stack}` : "";
 }
 const isDev$2 = process.env.NODE_ENV === "development";
 const __filename$2 = fileURLToPath(import.meta.url);
-const __dirname$3 = path$8.dirname(__filename$2);
-const configPath$2 = isDev$2 ? path$8.join(__dirname$3, "../src/backend/configurations/serverConfig.json") : path$8.join(app.getPath("userData"), "serverConfig.json");
+const __dirname$3 = path__default.dirname(__filename$2);
+const configPath$2 = isDev$2 ? path__default.join(__dirname$3, "../src/backend/configurations/serverConfig.json") : path__default.join(app.getPath("userData"), "serverConfig.json");
 async function initializeAndGetModel(model) {
   try {
-    const data = fs$4.readFileSync(configPath$2, "utf-8");
+    const data = fs$5.readFileSync(configPath$2, "utf-8");
     if (!data) {
       return null;
     }
@@ -75939,18 +75934,46 @@ async function initializeAndGetModel(model) {
     console.log(e);
   }
 }
+const LOG_DIRECTORY = process.cwd();
 const delay = (ms2) => new Promise((resolve3) => setTimeout(resolve3, ms2));
 const MCP_TOOL_MAX_RETRIES = 3;
 const MCP_TOOL_RETRY_DELAY_MS = 1e3;
 const TOTAL_ATTEMPTS = 1 + MCP_TOOL_MAX_RETRIES;
+const logChatInteraction = async (modelName, userQuery, chatbotResponse) => {
+  let logFilePath = "";
+  try {
+    const sanitizedModelName = modelName.replace(/[^a-z0-9_\-\.]/gi, "_").replace(/\.+$/, "");
+    const safeModelName = sanitizedModelName || "unknown_model";
+    const logFileName = `${safeModelName}.log`;
+    logFilePath = path$8.join(LOG_DIRECTORY, logFileName);
+    const logEntry = `
+============================================================
+Model: ${modelName}
+------------------------------------------------------------
+User Query:
+${userQuery}
+------------------------------------------------------------
+Chatbot Response:
+${chatbotResponse}
+============================================================
+
+`;
+    await fs$4.appendFile(logFilePath, logEntry, "utf8");
+    console.log(`Chat interaction logged successfully to ${logFilePath}`);
+  } catch (logError) {
+    console.error(`[Log Error] Failed to write chat interaction to log file '${logFilePath || `${modelName}.log`}':`, logError);
+  }
+};
 const chatWithLLM = async (req2, res2) => {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
+  const { message, history, model: modelName } = req2.body;
+  if (!message) {
+    return res2.status(400).json({ error: "Message is required" });
+  }
+  if (!modelName) {
+    return res2.status(400).json({ error: "Model name ('model') is required in the request body" });
+  }
   try {
-    const { message, history, model } = req2.body;
-    if (!message) {
-      res2.status(400).json({ error: "Message is required" });
-      return;
-    }
     const { allGeminiTools: allGeminiTools2, mcpClients: mcpClients2, toolToServerMap: toolToServerMap2 } = await connectToMcpServers();
     console.log(
       "Tools configured for Gemini:",
@@ -75958,14 +75981,12 @@ const chatWithLLM = async (req2, res2) => {
     );
     console.log("Connected MCP Clients:", Array.from(mcpClients2.keys()));
     console.log("Tool to Server Map:", Object.fromEntries(toolToServerMap2));
-    if (mcpClients2.size === 0) {
-      res2.status(503).json({ error: "No MCP Servers are connected", allGeminiTools: allGeminiTools2, mcpClients: mcpClients2, toolToServerMap: toolToServerMap2 });
-      return;
+    if (mcpClients2.size === 0 && allGeminiTools2.length > 0) {
+      console.warn("Warning: Tools defined but no MCP Servers are connected.");
     }
-    const geminiModel = await initializeAndGetModel(model);
+    const geminiModel = await initializeAndGetModel(modelName);
     if (!geminiModel) {
-      res2.status(503).json({ error: "Server LLM not configured" });
-      return;
+      return res2.status(503).json({ error: `Server LLM '${modelName}' not configured or failed to initialize` });
     }
     const chat = geminiModel.startChat({
       history: history || [],
@@ -76023,7 +76044,6 @@ const chatWithLLM = async (req2, res2) => {
             console.warn(
               `  [Attempt ${attempt}/${TOTAL_ATTEMPTS}] FAILED for tool "${toolName}" via server "${serverKey}". Error:`,
               toolError.message || toolError
-              // Log the specific error message
             );
             if (attempt < TOTAL_ATTEMPTS) {
               console.log(`    Retrying in ${MCP_TOOL_RETRY_DELAY_MS}ms...`);
@@ -76042,7 +76062,6 @@ const chatWithLLM = async (req2, res2) => {
               name: toolName,
               response: {
                 content: typeof mcpToolResult.content === "string" ? mcpToolResult.content : JSON.stringify(mcpToolResult.content) || "Tool executed successfully."
-                // Fallback content
               }
             }
           });
@@ -76079,25 +76098,34 @@ const chatWithLLM = async (req2, res2) => {
       console.warn(`Gemini response blocked: ${response2.promptFeedback.blockReason}`, response2.promptFeedback);
     }
     console.log("Final Gemini response being sent to user:", finalAnswer);
+    await logChatInteraction(modelName, message, finalAnswer);
     const finalHistory = await chat.getHistory();
     res2.json({ reply: finalAnswer, history: finalHistory });
   } catch (err) {
     console.error("Error in chatWithLLM:", err.stack || err);
+    await logChatInteraction(
+      modelName || "unknown_model_on_error",
+      // Use a distinct name if modelName was missing
+      message || "unknown_query",
+      // Use 'unknown_query' if message wasn't available
+      `Error during processing: ${err.message || "Unknown server error"}`
+      // Log the error message as the response
+    );
     res2.status(500).json({ error: `Failed in chat handler: ${err.message || "Unknown server error"}` });
   }
 };
 const router$2 = express.Router();
 router$2.post("/", chatWithLLM);
 const __filename$1 = fileURLToPath(import.meta.url);
-const __dirname$2 = path$8.dirname(__filename$1);
+const __dirname$2 = path__default.dirname(__filename$1);
 const isDev$1 = process.env.NODE_ENV === "development";
-const configPath$1 = isDev$1 ? path$8.join(__dirname$2, "../src/backend/configurations/serverConfig.json") : path$8.join(app.getPath("userData"), "serverConfig.json");
+const configPath$1 = isDev$1 ? path__default.join(__dirname$2, "../src/backend/configurations/serverConfig.json") : path__default.join(app.getPath("userData"), "serverConfig.json");
 const getServerConfiguration = (_, res2) => {
   try {
-    if (!fs$4.existsSync(configPath$1)) {
+    if (!fs$5.existsSync(configPath$1)) {
       return res2.json({ GEMINI_API_KEY: "" });
     }
-    const data = fs$4.readFileSync(configPath$1, "utf-8");
+    const data = fs$5.readFileSync(configPath$1, "utf-8");
     if (!data) {
       return res2.json({ GEMINI_API_KEY: "" });
     }
@@ -76109,17 +76137,17 @@ const getServerConfiguration = (_, res2) => {
   }
 };
 const __filename = fileURLToPath(import.meta.url);
-const __dirname$1 = path$8.dirname(__filename);
+const __dirname$1 = path__default.dirname(__filename);
 const isDev = process.env.NODE_ENV === "development";
-const configPath = isDev ? path$8.join(__dirname$1, "../src/backend/configurations/serverConfig.json") : path$8.join(app.getPath("userData"), "serverConfig.json");
+const configPath = isDev ? path__default.join(__dirname$1, "../src/backend/configurations/serverConfig.json") : path__default.join(app.getPath("userData"), "serverConfig.json");
 const saveServerConfiguration = (req2, res2) => {
   try {
     const data = req2.body;
-    const dirPath = path$8.dirname(configPath);
-    if (!fs$4.existsSync(dirPath)) {
-      fs$4.mkdirSync(dirPath, { recursive: true });
+    const dirPath = path__default.dirname(configPath);
+    if (!fs$5.existsSync(dirPath)) {
+      fs$5.mkdirSync(dirPath, { recursive: true });
     }
-    fs$4.writeFileSync(configPath, JSON.stringify(data, null, 2));
+    fs$5.writeFileSync(configPath, JSON.stringify(data, null, 2));
     return res2.json(data);
   } catch (err) {
     res2.status(500).json({ error: "Failed to save config.", message: err.message });
@@ -76161,7 +76189,7 @@ var stripFinalNewline$1 = (input) => {
 var npmRunPath$1 = { exports: {} };
 npmRunPath$1.exports;
 (function(module) {
-  const path3 = path$8;
+  const path3 = path__default;
   const pathKey2 = pathKeyExports;
   const npmRunPath2 = (options) => {
     options = {
@@ -77255,7 +77283,7 @@ var command = {
   getEscapedCommand: getEscapedCommand$1,
   parseCommand: parseCommand$1
 };
-const path2 = path$8;
+const path2 = path__default;
 const childProcess = require$$0$b;
 const crossSpawn = crossSpawnExports;
 const stripFinalNewline = stripFinalNewline$1;
