@@ -92,11 +92,11 @@ export const chatWithLLM = async (req: any, res: any) => {
     );
     console.log("Connected MCP Clients:", Array.from(mcpClients.keys()));
     console.log("Tool to Server Map:", Object.fromEntries(toolToServerMap));
-
-    if (mcpClients.size === 0 && allGeminiTools.length > 0) { // Only error if tools were expected but no servers connected
+    
+    if (mcpClients.size === 0 && allGeminiTools.length === 0) { // Only error if tools were expected but no servers connected
      console.warn("Warning: Tools defined but no MCP Servers are connected.");
      // Decide if this should be a blocking error or just a warning
-     // return res.status(503).json({ error: "Tools require MCP Servers, but none are connected.", allGeminiTools });
+     return res.status(503).json({ error: "Tools require MCP Servers, but none are connected.", allGeminiTools });
     }
 
     // --- Initialize LLM ---
