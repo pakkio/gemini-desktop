@@ -29,6 +29,20 @@ npm install
 
 ---
 
+### Environment Setup
+
+Create a `.env` file in the root directory of the project with the following content:
+
+```bash
+PORT=5001 # Port for the backend API server
+VITE_API_URL=http://localhost:5001
+NODE_ENV="DEVELOPMENT"
+```
+
+> Make sure to adjust `VITE_API_URL` if you run your backend server on a different port or domain.
+
+---
+
 ## Development
 
 To start the app in development mode:
