@@ -42,7 +42,7 @@ function createWindow() {
       preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true,
       nodeIntegration: true,
-      devTools: true, // ✅ explicitly enable devTools
+      devTools: false, // ✅ explicitly enable devTools
     },
   });
 
