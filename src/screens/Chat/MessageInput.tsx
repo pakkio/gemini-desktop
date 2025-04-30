@@ -33,7 +33,14 @@ const MessageInput = ({
   const [isModelListOpen, setIsModelListOpen] = useState(false); // Track model list expansion
 
   // Models for selection
-  const models = ["gemini-2.5-pro-preview-03-25", "gemini-2.0-flash", "gemini-1.5-pro","gemini-1.5-flash"];
+  const models = [
+    "gemini-2.5-flash-preview-04-17",
+    "gemini-2.5-pro-exp-03-25",
+    "gemini-2.5-pro-preview-03-25",
+    "gemini-2.0-flash",
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
+  ];
 
   // Open/close the model list
   const handleModelClick = () => {
