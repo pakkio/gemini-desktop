@@ -124,15 +124,6 @@ Make sure you have your API key to configure app
 └── electron-builder.yml
 ```
 
----
-
-## License
-
-This project is currently private.  
-Open-sourcing details might be shared later.
-
----
-
 ## Notes
 
 - Make sure to have Node.js and npm installed.
