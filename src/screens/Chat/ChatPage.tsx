@@ -202,7 +202,9 @@ export default function ChatPage() {
         loadChat={loadChat}
         startNewChat={startNewChat}
       />
-      <Box component="main" sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
+      <Box 
+      component="main" 
+      sx={{ flexGrow: 1,overflow:"hidden", display: "flex", flexDirection: "column" }}>
         <ChatHeader onMenuClick={toggleDrawer} />
         {/* Message List Area */}
         <Box
@@ -235,14 +237,14 @@ export default function ChatPage() {
           boxShadow: '0 -2px 5px rgba(0,0,0,0.05)' // Subtle shadow separating input
         }}
       >
-          <MessageInput
+        <MessageInput
           inputValue={inputValue}
           setInputValue={setInputValue}
           handleSubmit={sendMessage}
           isLoading={isLoading}
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
-        />
+        />         
         </Box>
       </Box>
     </Box>

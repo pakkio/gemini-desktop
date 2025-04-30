@@ -33,7 +33,7 @@ const MessageInput = ({
   const [isModelListOpen, setIsModelListOpen] = useState(false); // Track model list expansion
 
   // Models for selection
-  const models = ["gemini-2.5-pro-preview-03-25", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash","gemini-1.5-flash-8b","gemini-1.5-pro"];
+  const models = ["gemini-2.5-pro-preview-03-25", "gemini-2.0-flash", "gemini-1.5-pro","gemini-1.5-flash"];
 
   // Open/close the model list
   const handleModelClick = () => {
@@ -144,7 +144,7 @@ const MessageInput = ({
               <IconButton
                 color="primary"
                 onClick={() => handleSubmit()} // Call submit handler directly
-                disabled={isLoading || !inputValue.trim()}
+                disabled={isLoading}
                 size="medium" // Adjust size if needed
                 sx={
                   {
