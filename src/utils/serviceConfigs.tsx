@@ -58,14 +58,14 @@ export async function getDefaultServiceConfigs(path: string) {
         GOOGLE_MAPS_API_KEY: "",
       },
     },
-    postgres: {
-      command: "npx",
-      args: [
-        "-y",
-        "@modelcontextprotocol/server-postgres",
-        "postgresql://localhost/mydb",
-      ],
-    },
+    // postgres: {
+    //   command: "npx",
+    //   args: [
+    //     "-y",
+    //     "@modelcontextprotocol/server-postgres",
+    //     "postgresql://localhost/mydb",
+    //   ],
+    // },
     puppeteer: {
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-puppeteer"],
