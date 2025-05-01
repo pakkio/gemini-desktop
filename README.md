@@ -18,11 +18,11 @@ It also integrates Google's Gemini API to provide a powerful LLM chat experience
 ## 🖼️ App Screenshot
 
 <p align="center">
-  <img src="./screenshots/screensht1.gif" alt="Electron MCP Client Screenshot" width="500" />
+  <img src="./screenshots/screenshot1.gif" alt="Electron MCP Client Screenshot" width="500" />
 </p>  
 </br>
 <p align="center">
-  <img src="./screenshots/screensht2.gif" alt="Electron MCP Client Screenshot" width="500" />
+  <img src="./screenshots/screenshot2.gif" alt="Electron MCP Client Screenshot" width="500" />
 </p>  
 </br>
 
