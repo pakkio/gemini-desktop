@@ -12,9 +12,22 @@
   <a href="https://www.framer.com/motion/"><img src="https://img.shields.io/badge/Framer%20Motion-12.7.4-EF0185?style=for-the-badge&logo=framer&logoColor=white" alt="Framer Motion Badge" /></a>
 </p>
 
-
 **Gemini MCP Desktop Client** is a desktop client built with Electron, Vite, React, and TypeScript, designed to interact with various [Model Context Protocol (MCP) servers](https://github.com/modelcontextprotocol/servers).  
 It also integrates Google's Gemini API to provide a powerful LLM chat experience.
+
+## 🖼️ App Screenshot
+
+<p align="center">
+  <img src="./screenshots/screensht1.gif" alt="Electron MCP Client Screenshot" width="500" />
+</p>  
+</br>
+<p align="center">
+  <img src="./screenshots/screensht2.gif" alt="Electron MCP Client Screenshot" width="500" />
+</p>  
+</br>
+
+
+
 
 ---
 
@@ -121,7 +134,7 @@ This client is designed to interact with various MCP servers listed at:
 👉 [Model Context Protocol - Servers](https://github.com/modelcontextprotocol/servers)
 
 > There are many MCP servers available, including third-party MCP implementations integrated into this application.  
-> However, we have created a separate list of **tested and verified MCP servers** to help users identify reliable options.
+> However, I have created a separate list of **tested and verified MCP servers** to help users identify reliable options.
 
 👉 **See the list of tested MCP servers here:** [mcpServerTested.md](./mcpServerTested.md)
 
