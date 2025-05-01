@@ -111,15 +111,25 @@ Output will be available inside the `dist/` and `dist-electron/` folders.
 - **React Router** - Routing inside the app
 
 ---
+You can update your `README.md` by adding a link to the `mcpServerTested.md` file and a short explanation. Here’s how you can insert it in the **"MCP Servers"** section of your `README.md`:
 
-## MCP Servers
+---
+
+### 📌 MCP Servers
 
 This client is designed to interact with various MCP servers listed at:  
 👉 [Model Context Protocol - Servers](https://github.com/modelcontextprotocol/servers)
 
+> There are many MCP servers available, including third-party MCP implementations integrated into this application.  
+> However, we have created a separate list of **tested and verified MCP servers** to help users identify reliable options.
+
+👉 **See the list of tested MCP servers here:** [mcpServerTested.md](./mcpServerTested.md)
+
 You can configure which server to connect to from within the app settings.
 
 ---
+
+Let me know if you'd like this inserted automatically into your file or formatted differently.
 
 ## Gemini API
 
