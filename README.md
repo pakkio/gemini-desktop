@@ -1,6 +1,6 @@
 
 
-# Electron MCP Client
+# Gemini MCP Desktop Client
 
 <p align="left">
   <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-20232A?style=for-the-badge&logo=Electron&logoColor=61DAFB" alt="Electron Badge" /></a>
@@ -12,7 +12,7 @@
   <a href="https://www.framer.com/motion/"><img src="https://img.shields.io/badge/Framer Motion-EF0185?style=for-the-badge&logo=framer&logoColor=white" alt="Framer Motion Badge" /></a>
 </p>
 
-**Electron MCP** is a desktop client built with Electron, Vite, React, and TypeScript, designed to interact with various [Model Context Protocol (MCP) servers](https://github.com/modelcontextprotocol/servers).  
+**Gemini MCP Desktop Client** is a desktop client built with Electron, Vite, React, and TypeScript, designed to interact with various [Model Context Protocol (MCP) servers](https://github.com/modelcontextprotocol/servers).  
 It also integrates Google's Gemini API to provide a powerful LLM chat experience.
 
 ---
