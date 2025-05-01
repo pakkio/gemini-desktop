@@ -2,6 +2,16 @@
 
 # Electron MCP Client
 
+<p align="left">
+  <a href="https://www.electronjs.org/"><img src="https://img.shields.io/badge/Electron-20232A?style=for-the-badge&logo=Electron&logoColor=61DAFB" alt="Electron Badge" /></a>
+  <a href="https://vitejs.dev/"><img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=Vite&logoColor=white" alt="Vite Badge" /></a>
+  <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=React&logoColor=black" alt="React Badge" /></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=TypeScript&logoColor=white" alt="TypeScript Badge" /></a>
+  <a href="https://mui.com/"><img src="https://img.shields.io/badge/MUI-007FFF?style=for-the-badge&logo=mui&logoColor=white" alt="MUI Badge" /></a>
+  <a href="https://emotion.sh/docs/introduction"><img src="https://img.shields.io/badge/Emotion-C8658B?style=for-the-badge&logo=emotion&logoColor=white" alt="Emotion Badge" /></a>
+  <a href="https://www.framer.com/motion/"><img src="https://img.shields.io/badge/Framer Motion-EF0185?style=for-the-badge&logo=framer&logoColor=white" alt="Framer Motion Badge" /></a>
+</p>
+
 **Electron MCP** is a desktop client built with Electron, Vite, React, and TypeScript, designed to interact with various [Model Context Protocol (MCP) servers](https://github.com/modelcontextprotocol/servers).  
 It also integrates Google's Gemini API to provide a powerful LLM chat experience.
 
@@ -22,8 +32,8 @@ It also integrates Google's Gemini API to provide a powerful LLM chat experience
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/electron-mcp.git
-cd electron-mcp
+git clone https://github.com/yourusername/gemini-mcp-desktop-client.git
+cd gemini-mcp-desktop-client
 npm install
 ```
 
