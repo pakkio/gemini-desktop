@@ -46,7 +46,7 @@ It also integrates Google's Gemini API to provide a powerful LLM chat experience
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/gemini-mcp-desktop-client.git
+git clone https://github.com/duke7able/gemini-mcp-desktop-client.git
 cd gemini-mcp-desktop-client
 npm install
 ```
