@@ -55,6 +55,8 @@ npm install
 
 ### Environment Setup
 
+To create .env run `npm run create-env` for mac and unix and `npm run create-env-win` for windows
+Or simply create one like this
 Create a `.env` file in the root directory of the project with the following content:
 
 ```bash
