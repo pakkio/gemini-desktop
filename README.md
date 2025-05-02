@@ -172,6 +172,56 @@ Make sure you have your API key to configure app
 └── electron-builder.yml
 ```
 
+## 🧰 Enable/Disable DevTools
+
+You can control whether **DevTools** are enabled in the Electron window directly from the `electron/main.ts` file.
+
+In the `createWindow` function, modify the `devTools` property inside the `webPreferences` object to control this behavior:
+
+```ts
+devTools: false // Set to true to enable DevTools, false to disable
+```
+
+Additionally, you can programmatically open DevTools using:
+
+```ts
+win.webContents.openDevTools(); // Opens DevTools automatically when the app launches
+```
+
+### Example:
+
+```ts
+function createWindow() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  win = new BrowserWindow({
+    width,
+    height,
+    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    webPreferences: {
+      webSecurity: false,
+      preload: path.join(__dirname, "preload.mjs"),
+      contextIsolation: true,
+      nodeIntegration: true,
+      devTools: false, // ✅ Change this to true or false as needed
+    },
+  });
+
+  if (VITE_DEV_SERVER_URL) {
+    win.loadURL(VITE_DEV_SERVER_URL);
+  } else {
+    win.loadFile(path.join(RENDERER_DIST, "index.html"));
+  }
+
+  // ✅ Open DevTools automatically (only works if devTools is true)
+  win.webContents.openDevTools();
+}
+```
+
+> ⚠️ Ensure `devTools` is set to `true` in `webPreferences` if you want `openDevTools()` to work. Otherwise, the DevTools will not open.
+
+
+
+
 ## Notes
 
 - Make sure to have Node.js and npm installed.
