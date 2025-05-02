@@ -72,6 +72,7 @@ import {
 } from "@mui/icons-material";
 // Import the function
 import { getDefaultServiceConfigs } from "../../utils/serviceConfigs";
+import { toast } from "react-toastify";
 
 // --- labelKeyMap remains the same ---
 const labelKeyMap: Record<string, string> = {
@@ -460,7 +461,7 @@ export default function SettingsPage() {
          //    setLeftList(Array.isArray(response.leftList) ? response.leftList : leftList);
          //    setRightList(Array.isArray(response.rightList) ? response.rightList : rightList);
          // }
-         alert("Settings saved successfully!");
+         toast.success("Settings saved successfully!"); // Use toast for success
       } else {
          throw new Error(response?.error || "Unknown error saving settings.");
       }
