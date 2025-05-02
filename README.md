@@ -224,6 +224,25 @@ function createWindow() {
 
 
 
+## 🔽 Download Prebuilt Installers
+
+You can directly download and install the latest version of the Gemini MCP Desktop Client for your platform:
+
+* 🪟 **Windows Installer (MSI/EXE)**:
+  [Download for Windows](https://dev.asambhav.org.in/gemini-mcp-desktop-client%20Setup%200.0.0.exe)
+
+* 🍎 **macOS (DMG)**:
+  [Download for macOS](http://dev.asambhav.org.in/gemini-mcp-desktop-client.zip)
+
+Steps to make it work for mac :
+- Extract zip
+- move the electron app to desktop
+- run this command  : `sudo xattr -rd com.apple.quarantine ~/Desktop/electron-mcp.app` .
+- then now you can move that to applications folder to be find using spotlight
+
+> These are prebuilt installers using `electron-builder` and are ideal for users who don’t want to build the app manually.
+
+
 ## Notes
 
 - Make sure to have Node.js and npm installed.
