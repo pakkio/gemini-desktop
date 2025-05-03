@@ -43,6 +43,24 @@ It also integrates Google's Gemini API to provide a powerful LLM chat experience
 
 ---
 
+
+# Setting Up Google Gemini API Key
+
+To get started with Google Gemini API, you'll need to generate an API key. Follow the steps below to create the key and secure it for your project.
+
+### 1. **Obtain the API Key**
+
+To generate a Google Gemini API key, follow the official guide from Merge Dev. You can access the instructions here: [Google Gemini API Key Documentation](https://www.merge.dev/blog/gemini-api-key).
+
+This documentation will walk you through the process of creating and managing your API key.
+
+### Restrict API Key (Optional but recommended)
+
+- After copying the API key, you can click **Restrict Key** to limit its usage.
+- You can restrict the API key to specific IP addresses, referrers, or HTTP methods to secure your API key further.z
+
+---
+
 ## Installation
 
 ```bash
