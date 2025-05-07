@@ -9,6 +9,22 @@ export async function getDefaultServiceConfigs(path: string) {
         AWS_REGION: "",
       },
     },
+    fetch: {
+      command: "uvx",
+      args: ["mcp-server-fetch"],
+    },
+    blender: {
+      command: "uvx",
+      args: ["blender-mcp"],
+    },
+    "mcp-unity": {
+      command: "node",
+      args: [],
+      env: {
+        UNITY_PORT: "",
+        ABSOLUTE_PATH_TO_BUILD: "",
+      }
+    },
     "brave-search": {
       command: "npx",
       args: ["-y", "@modelcontextprotocol/server-brave-search"],

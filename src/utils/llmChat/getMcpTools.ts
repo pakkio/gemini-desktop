@@ -1,8 +1,5 @@
-// --- START OF FILE getMcpTools.ts ---
-
 import { convertMcpSchemaToGeminiSchema } from "./convertMcpSchemaToGeminiSchema";
 import fs from "fs";
-// import os from "os"; // <--- REMOVED (Error 4)
 import path from "path";
 import { fileURLToPath } from "url";
 import { Tool as McpTool } from "@modelcontextprotocol/sdk/types.js";
@@ -13,8 +10,7 @@ import {
   StdioServerParameters,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { app } from "electron";
-import which from 'which'; // Ensure 'npm i --save-dev @types/which' is run (Error 1 fix)
-// import { spawn, ChildProcess } from 'child_process'; // <--- REMOVED spawn and ChildProcess (Error 5 & 6 fix)
+import which from 'which'; // Ensure 'npm i --save-dev @types/which' is run
 
 const mcpClients = new Map<string, McpClient>(); // Map serverKey -> McpClient instance
 const toolToServerMap = new Map<string, string>(); // Map toolName -> serverKey
@@ -47,26 +43,40 @@ function logToFile(message: string | unknown) {
   }
 }
 
+// --- Runner Path Discovery ---
+
+let npxPath: string | null = null;
+let uvxPath: string | null = null;
+
+function findRunner(runnerName: 'npx' | 'uvx'): string | null {
+    try {
+        const runnerPath = which.sync(runnerName);
+        logToFile(`Found '${runnerName}' executable at: ${runnerPath}`);
+        return runnerPath;
+    } catch (e) {
+        logToFile(`⚠️ Could not find '${runnerName}' in the system PATH. MCP servers configured to use '${runnerName}' might fail.`);
+        logToFile(`   Error details: ${e instanceof Error ? e.message : String(e)}`);
+        if (runnerName === 'npx') {
+            logToFile(`   Please ensure Node.js (which includes npx) is installed and its 'bin' directory is in the system's PATH environment variable.`);
+        } else if (runnerName === 'uvx') {
+            logToFile(`   Please ensure 'uv' (which includes uvx) is installed (e.g., via pip, brew, etc.) and its location is in the system's PATH.`);
+        }
+        return null; // Indicate not found
+    }
+}
+
+// Find runners ONCE at startup
+npxPath = findRunner('npx');
+uvxPath = findRunner('uvx');
+
 
 // --- Main Function ---
 
-// Find npx path ONCE
-let npxPath: string | null = null;
-try {
-    npxPath = which.sync('npx'); // Use which.sync to find npx in PATH
-    logToFile(`Found 'npx' executable at: ${npxPath}`);
-} catch (e) {
-    logToFile(`⚠️ Could not find 'npx' in the system PATH. MCP servers requiring npx will likely fail.`);
-    logToFile(`   Error details: ${e instanceof Error ? e.message : String(e)}`);
-    logToFile(`   Please ensure Node.js (which includes npx) is installed and its 'bin' directory is in the system's PATH environment variable.`);
-    npxPath = 'npx'; // Fallback to just 'npx', hoping it's globally available
-}
-
-// <<< MODIFIED RETURN TYPE >>>
+// <<< RETURN TYPE INCLUDES toolToServerMap >>>
 export async function connectToMcpServers(): Promise<{
   allGeminiTools: FunctionDeclaration[];
   mcpClients: Map<string, McpClient>;
-  toolToServerMap: Map<string, string>; // <-- ADDED THIS
+  toolToServerMap: Map<string, string>;
 }> {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
@@ -78,6 +88,8 @@ export async function connectToMcpServers(): Promise<{
   logToFile(`--- Starting connectToMcpServers ---`);
   logToFile(`Running in ${isPackaged ? 'packaged' : 'development'} mode.`);
   logToFile(`Attempting to load MCP config from: ${configPath}`);
+  logToFile(`Detected npx path: ${npxPath || 'Not Found'}`);
+  logToFile(`Detected uvx path: ${uvxPath || 'Not Found'}`);
 
   // Ensure the module-level maps are cleared at the start of each run
   mcpClients.clear();
@@ -89,6 +101,8 @@ export async function connectToMcpServers(): Promise<{
   try {
     if (isPackaged && !fs.existsSync(configPath)) {
         logToFile(`⚠️ MCP config file not found at ${configPath}. Creating default or skipping.`);
+        // Optionally create a default config here if desired
+        // fs.writeFileSync(configPath, JSON.stringify({ leftList: [] }, null, 2), 'utf-8');
         return { allGeminiTools: [], mcpClients: new Map(), toolToServerMap: new Map() };
     }
     data = fs.readFileSync(configPath, "utf-8");
@@ -110,10 +124,9 @@ export async function connectToMcpServers(): Promise<{
     return { allGeminiTools: [], mcpClients: new Map(), toolToServerMap: new Map() };
   }
 
+  // Use optional chaining and provide a default empty array
   const serverConfigs = parsedConfig?.leftList || [];
   logToFile(`Found ${serverConfigs.length} server configurations.`);
-
-  const commandToExecute = npxPath || 'npx';
 
   const connectionPromises = serverConfigs.map(
     async (serverConfig: {
@@ -121,6 +134,11 @@ export async function connectToMcpServers(): Promise<{
       key: string;
       config: {
         env?: Record<string, string>;
+        /**
+         * The command to use for running the server.
+         * Can be 'npx', 'uvx', or a full path to an executable.
+         * If omitted, defaults to 'npx'.
+         */
         command?: string;
         args: string[];
       };
@@ -129,17 +147,55 @@ export async function connectToMcpServers(): Promise<{
         logToFile(`❌ Invalid configuration for server "${serverConfig.label}": Missing 'config' or 'args'. Skipping.`);
         return;
       }
-       const specificCommand = serverConfig.config.command || commandToExecute;
 
-       if (specificCommand === 'npx' && !npxPath) {
-            logToFile(`❌ Skipping server "${serverConfig.label}" because 'npx' command was not found in PATH and config did not specify an alternative command.`);
-            return;
+      // --- Determine Command to Execute ---
+      const configuredCommand = serverConfig.config.command;
+      let commandToExecute: string | null = null;
+      let runnerType: 'npx' | 'uvx' | 'custom' | 'default' = 'default';
+
+      if (configuredCommand === 'npx') {
+          commandToExecute = npxPath;
+          runnerType = 'npx';
+          if (!commandToExecute) logToFile(`⚠️ Config for "${serverConfig.label}" specifies 'npx', but it was not found in PATH. Attempting to run 'npx' directly.`);
+          commandToExecute = commandToExecute || 'npx'; // Fallback to just 'npx'
+      } else if (configuredCommand === 'uvx') {
+          commandToExecute = uvxPath;
+          runnerType = 'uvx';
+          if (!commandToExecute) logToFile(`⚠️ Config for "${serverConfig.label}" specifies 'uvx', but it was not found in PATH. Attempting to run 'uvx' directly.`);
+          commandToExecute = commandToExecute || 'uvx'; // Fallback to just 'uvx'
+      } else if (configuredCommand) {
+          commandToExecute = configuredCommand; // Use custom command directly
+          runnerType = 'custom';
+          logToFile(`Server "${serverConfig.label}" uses custom command: ${commandToExecute}`);
+      } else {
+          // Default to npx if command is not specified
+          commandToExecute = npxPath;
+          runnerType = 'default';
+          if (!commandToExecute) {
+              logToFile(`⚠️ Config for "${serverConfig.label}" does not specify a command, defaulting to 'npx', but it was not found in PATH. Attempting to run 'npx' directly.`);
+          } else {
+              logToFile(`ℹ️ Config for "${serverConfig.label}" does not specify a command, defaulting to 'npx'. Consider adding '"command": "npx"' or '"command": "uvx"' to the config for clarity.`);
+          }
+           commandToExecute = commandToExecute || 'npx'; // Fallback to just 'npx'
+      }
+
+      // --- Check if required runner executable was found (if using npx/uvx) ---
+       if ((runnerType === 'npx' || runnerType === 'default') && !npxPath && configuredCommand !== 'npx') {
+           // Only fail if defaulting to npx AND npx wasn't found. If explicitly set to 'npx', we already logged a warning and will try the fallback 'npx'.
+           logToFile(`❌ Skipping server "${serverConfig.label}" because it defaults to 'npx' runner, but 'npx' was not found in PATH.`);
+           return;
        }
+        if (runnerType === 'uvx' && !uvxPath) {
+           // Only fail if explicitly requesting uvx AND it wasn't found. We already logged a warning and will try the fallback 'uvx'.
+           // However, it's safer to skip if the explicit runner wasn't found by `which`.
+           logToFile(`❌ Skipping server "${serverConfig.label}" because it requires 'uvx' runner, but 'uvx' was not found in PATH.`);
+           return;
+        }
+       // For custom commands, we assume the user provided a valid path/command.
 
-      logToFile(`Processing server config: ${serverConfig.label} (Command: ${specificCommand}, Args: ${JSON.stringify(serverConfig.config.args)})`);
+      logToFile(`Processing server config: ${serverConfig.label} (Runner Type: ${runnerType}, Command: ${commandToExecute}, Args: ${JSON.stringify(serverConfig.config.args)})`);
 
       let transport: StdioClientTransport | null = null;
-      // let childProcess: ChildProcess | undefined; // <--- REMOVED (Error 6)
 
       try {
         // --- Environment Setup ---
@@ -155,29 +211,18 @@ export async function connectToMcpServers(): Promise<{
         }
         // --- End Env Setup ---
 
-
         // --- Direct Execution Parameters ---
         const params: StdioServerParameters = {
-            command: specificCommand,
+            command: commandToExecute, // Use the determined command
             args: serverConfig.config.args,
             env: filteredChildEnv as Record<string, string>,
-            // shell: false, // <--- REMOVED (Error 2)
-            // cwd: serverConfig.cwd || undefined
+            // cwd: serverConfig.cwd || undefined // If you need current working directory support
         };
         // --- End Parameters ---
 
-        // --- Updated Logging Line (Error 3 fix) ---
-        logToFile(`Attempting to start MCP server "${serverConfig.label}" directly with command: ${params.command} ${(params.args || []).join(' ')}`);
+        logToFile(`Attempting to start MCP server "${serverConfig.label}" with command: ${params.command} ${(params.args || []).join(' ')}`);
 
-        // --- Modified Transport Instantiation to Capture Stderr ---
         transport = new StdioClientTransport(params);
-
-        // --- REMOVED stderr capture / childProcess logic (Error 6 fix) ---
-
-        const client = new McpClient({
-          name: `mcp-gemini-backend-${serverConfig.key}`,
-          version: "1.0.0",
-        });
 
         transport.onclose = () => {
             logToFile(`Transport explicitly closed for ${serverConfig.label}.`);
@@ -186,6 +231,10 @@ export async function connectToMcpServers(): Promise<{
              logToFile(`Transport error for ${serverConfig.label}: ${err.message}`);
         }
 
+        const client = new McpClient({
+          name: `mcp-gemini-backend-${serverConfig.key}`,
+          version: "1.0.0",
+        });
 
         await client.connect(transport);
 
@@ -197,7 +246,7 @@ export async function connectToMcpServers(): Promise<{
         logToFile(
           `✅ Connected to "${
             serverConfig.key
-          }" (${serverConfig.label}) directly with tools: ${currentServerTools.map((t) => t.name).join(", ")}`
+          }" (${serverConfig.label}) using ${runnerType} runner with tools: ${currentServerTools.map((t) => t.name).join(", ")}`
         );
 
         currentServerTools.forEach((tool) => {
@@ -219,22 +268,25 @@ export async function connectToMcpServers(): Promise<{
         const errorStack = e instanceof Error ? `\nStack: ${e.stack}`: '';
 
         logToFile(`❌ Failed operation for MCP server "${serverConfig.label}"`);
-        logToFile(`   Command: ${specificCommand}`);
-        // --- Updated Logging Line (Error 3 fix applied here too) ---
+        logToFile(`   Runner Type: ${runnerType}`);
+        logToFile(`   Command Attempted: ${commandToExecute}`);
         logToFile(`   Arguments: ${JSON.stringify(serverConfig.config.args || [])}`);
         logToFile(`   Error: ${errorMsg}`);
 
         if (errorMsg.includes('ENOENT')) {
-             logToFile(`   Hint: ENOENT usually means the command '${specificCommand}' was not found.`);
-             logToFile(`         - Is Node.js installed and '${specificCommand}' in the system PATH?`);
-             logToFile(`         - If using a specific command in config, is it correct and in PATH?`);
+             logToFile(`   Hint: ENOENT usually means the command '${commandToExecute}' was not found or is not executable.`);
+             if (runnerType === 'npx' || runnerType === 'default') {
+                 logToFile(`         - Is Node.js installed and 'npx' in the system PATH? (Found path: ${npxPath || 'Not Found'})`);
+             } else if (runnerType === 'uvx') {
+                 logToFile(`         - Is 'uv' installed and 'uvx' in the system PATH? (Found path: ${uvxPath || 'Not Found'})`);
+             } else { // Custom command
+                 logToFile(`         - Is the custom command '${commandToExecute}' correct and executable/in PATH?`);
+             }
         } else if (errorMsg.includes('closed') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('Transport closed')) {
              logToFile(`   Hint: Connection closed/refused suggests the server process started but exited or crashed immediately.`);
-             logToFile(`         - Check the server's requirements (e.g., API keys in env).`);
-             logToFile(`         - Are the environment variables correct? (${Object.keys(serverConfig.config.env || {}).join(', ')})`);
-             logToFile(`         - The MCP server itself might have logged errors to its own console/stderr (difficult to capture here without process wrapping).`);
-              // --- Updated Logging Line (Error 3 fix applied here too) ---
-             logToFile(`         - Try running the command manually in a terminal: ${specificCommand} ${(serverConfig.config.args || []).join(' ')}`);
+             logToFile(`         - Check the server's own logs/output if possible.`);
+             logToFile(`         - Check requirements (e.g., API keys in env: ${Object.keys(serverConfig.config.env || {}).join(', ')})`);
+             logToFile(`         - Try running the command manually in a terminal: ${commandToExecute} ${(serverConfig.config.args || []).join(' ')}`);
         } else {
             logToFile(`   Stack: ${errorStack}`);
         }
@@ -249,7 +301,6 @@ export async function connectToMcpServers(): Promise<{
                 logToFile(`   Error closing transport during cleanup: ${closeErr}`);
             }
         }
-        // --- REMOVED childProcess kill logic (Error 6 fix) ---
       }
     }
   );
