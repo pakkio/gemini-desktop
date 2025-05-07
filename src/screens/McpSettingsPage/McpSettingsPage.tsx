@@ -711,9 +711,21 @@ export default function SettingsPage() {
           >
            {isLoading && !error ? 'Saving...' : 'Save Changes'} {/* Indicate saving state */}
         </Button>
-       <a href="/"> <Button variant="outlined" type="button" disabled={isLoading}>
+        <Button variant="outlined" onClick={() =>{
+          try{
+
+            console.log("reached here!!")
+            navigate("/")
+
+          }catch(e){
+            console.error("Error navigating to home:", e);
+            toast.error("Failed to navigate to home.");
+          }
+           }
+           } type="button" disabled={isLoading}>
           Back to Home
-        </Button> </a>
+        </Button>
+
          {/* Optional: Add back Configure New Server button if needed */}
          {/* <Button
            variant="contained"

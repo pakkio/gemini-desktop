@@ -34,6 +34,13 @@
       "node_modules/",
       "package.json",
       "static/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "./resources/bin/",
+        "to": "bin",
+        "filter": ["**/*"]
+      }
     ]
   },
   "dependencies": {
