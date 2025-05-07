@@ -23,6 +23,7 @@ import {
 import { useEffect, useState, useCallback } from "react"; // Import useCallback
 import { get, post } from "../../utils/api_helper/api_helper";
 import {
+  Gamepad as UnityIcon,
   // ... (Keep all your existing icon imports)
   Cloud as CloudIcon,
   Storage as StorageIcon,
@@ -79,6 +80,7 @@ const labelKeyMap: Record<string, string> = {
     "AWS KB Retrieval": "aws-kb-retrieval",
     "Brave Search": "brave-search",
     EverArt: "everart",
+    "Unity": "mcp-unity",
     Everything: "everything",
     Filesystem: "filesystem",
     GitHub: "github",
@@ -141,6 +143,7 @@ const labelKeyMap: Record<string, string> = {
 const iconMap: Record<string, JSX.Element> = {
     "AWS KB Retrieval": <CloudIcon />,
     "Brave Search": <SearchIcon />,
+    "Unity": <UnityIcon />,
     EverArt: <IntegrationInstructionsIcon />,
     Blender: <IntegrationInstructionsIcon />,
     Everything: <SearchIcon />,
