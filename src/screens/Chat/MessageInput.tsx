@@ -4,53 +4,26 @@ import {
   IconButton,
   CircularProgress,
   Tooltip,
-  MenuItem,
-  Button,
-  Paper,
+
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import { useState } from "react";
 
 interface Props {
   inputValue: string;
-  selectedModel: string;
+
   handleSubmit: (e?: React.FormEvent<HTMLFormElement>) => void | Promise<void>; // Make event optional
-  setSelectedModel: (value: string) => void; // Make event optional
   setInputValue: (value: string) => void;
   isLoading?: boolean;
 }
 
 const MessageInput = ({
-  selectedModel,
-  setSelectedModel,
   inputValue,
   setInputValue,
   isLoading,
   handleSubmit,
 }: Props) => {
-  const [isModelListOpen, setIsModelListOpen] = useState(false); // Track model list expansion
 
-  // Models for selection
-  const models = [
-    "gemini-2.5-flash-preview-04-17",
-    "gemini-2.5-pro-exp-03-25",
-    "gemini-2.5-pro-preview-03-25",
-    "gemini-2.0-flash",
-    "gemini-1.5-pro",
-    "gemini-1.5-flash",
-  ];
 
-  // Open/close the model list
-  const handleModelClick = () => {
-    setIsModelListOpen(!isModelListOpen);
-  };
-
-  const handleModelClose = (model: string) => {
-    setSelectedModel(model);
-    setIsModelListOpen(false);
-  };
 
   // Handle Enter key press
   const handleKeyPress = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -70,54 +43,7 @@ const MessageInput = ({
       {/* Model Selection Button and Chat Area */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         {/* Model Selection */}
-        <Box sx={{ display: "flex", alignItems: "center" }}>
-          <Button
-            variant="outlined"
-            onClick={handleModelClick}
-            sx={{
-              borderRadius: "20px",
-              display: "flex",
-              alignItems: "center",
-              padding: "6px 12px",
-            }}
-          >
-            {selectedModel}
-            {isModelListOpen ? (
-              <ExpandMoreIcon sx={{ ml: 1 }} />
-            ) : (
-              <ExpandLessIcon sx={{ ml: 1 }} />
-            )}
-          </Button>
-
-          {/* If the model list is open, show available models */}
-          {isModelListOpen && (
-            <Paper
-              sx={{
-                position: "absolute",
-                zIndex: 100,
-                bottom: "55px",
-                left: "25px",
-                width: "auto",
-              }}
-            >
-              <Box
-                sx={{
-                  border: 1,
-                  borderRadius: "8px",
-                  borderColor: "primary.main",
-                  boxShadow: 3,
-                  backgroundColor: "background.paper",
-                }}
-              >
-                {models.map((model) => (
-                  <MenuItem key={model} onClick={() => handleModelClose(model)}>
-                    {model}
-                  </MenuItem>
-                ))}
-              </Box>
-            </Paper>
-          )}
-        </Box>
+       
 
         {/* Message Input Area */}
         <Box
