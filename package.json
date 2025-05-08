@@ -39,7 +39,9 @@
       {
         "from": "./resources/bin/",
         "to": "bin",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ]
   },
