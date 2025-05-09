@@ -16,30 +16,29 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 
 const validateGeminiApiKey = async (apiKey: string) => {
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-  
-      if (response.ok) {
-        return { valid: true };
-      } else {
-        const error = await response.json();
-        console.warn("❌ Invalid API Key:", error);
-        return { valid: false, error };
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
-    } catch (err) {
-      console.error("Validation error:", err);
-      return { valid: false, error: err };
+    );
+
+    if (response.ok) {
+      return { valid: true };
+    } else {
+      const error = await response.json();
+      console.warn("❌ Invalid API Key:", error);
+      return { valid: false, error };
     }
-  };
-  
+  } catch (err) {
+    console.error("Validation error:", err);
+    return { valid: false, error: err };
+  }
+};
 
 const ServerConfiguration: React.FC = () => {
   const [apiKey, setApiKey] = useState("");
@@ -130,7 +129,11 @@ const ServerConfiguration: React.FC = () => {
               }
               disabled={!apiKey || loading}
             >
-              {loading ? "Validating..." : "Save & Launch"}
+              {loading
+                ? "Validating..."
+                : displayButtons
+                ? "Save"
+                : "Save & Launch"}
             </Button>
           </Stack>
 

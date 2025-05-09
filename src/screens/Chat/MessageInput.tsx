@@ -44,8 +44,8 @@ const MessageInput = ({
           (item: any) => item?.key === "brave-search"
         );
         if (!braveSearch || !braveSearch?.config?.env?.BRAVE_API_KEY) {
-          toast.error(
-            "Brave Search is required for this operation and is not configured in your settings."
+          toast.info(
+            "Brave Search MCP is required for this operation and is not configured in your settings."
           );
           return null;
         }
@@ -53,6 +53,9 @@ const MessageInput = ({
       }
     } catch (e) {
       console.log(e);
+      toast.info(
+        "Brave Search MCP is required for this operation and is not configured in your settings."
+      );
     }
   };
 
