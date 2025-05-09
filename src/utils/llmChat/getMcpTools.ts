@@ -112,7 +112,7 @@ logToFile(`--- Final resolved uvx path: ${uvxPath} ---`);
 
 
 // --- Main Function ---
-export async function connectToMcpServers(): Promise<{
+export async function connectToMcpServers(webSearch: boolean): Promise<{
   allGeminiTools: FunctionDeclaration[];
   mcpClients: Map<string, McpClient>;
   toolToServerMap: Map<string, string>;
@@ -176,6 +176,17 @@ export async function connectToMcpServers(): Promise<{
         args: string[];
       };
     }) => {
+      if (serverConfig.key === "mcp-unity") {
+        serverConfig.config.args = serverConfig?.config?.env
+          ?.ABSOLUTE_PATH_TO_BUILD
+          ? [serverConfig?.config?.env?.ABSOLUTE_PATH_TO_BUILD]
+          : [];
+      }
+
+      if(!webSearch && serverConfig.key === 'brave-search') {
+          logToFile(`Skipping server "${serverConfig.label}" (key: ${serverConfig.key}) because webSearch is false.`);
+          return;
+      }
       if (!serverConfig.config || !Array.isArray(serverConfig.config.args)) {
         logToFile(JSON.stringify(serverConfig, null, 2));
         logToFile(`❌ Invalid configuration for server "${serverConfig.label}": Missing 'config' or 'args'. Skipping.`);
