@@ -123,7 +123,10 @@ export default function ChatPage() {
     }
   };
   // --- Existing sendMessage function (no changes needed here) ---
-  const sendMessage = async (e?: React.FormEvent<HTMLFormElement>) => {
+  const sendMessage = async (
+    e?: React.FormEvent<HTMLFormElement>,
+    webSearch?: boolean
+  ) => {
     e?.preventDefault(); // Make event optional for direct calls
     if (!inputValue.trim() || isLoading) return;
 
@@ -151,6 +154,7 @@ export default function ChatPage() {
         message: currentInput.trim(), // Use stored input
         history: historyForBackend,
         model: selectedModel,
+        webSearch,
       });
 
       if (data?.reply) {
