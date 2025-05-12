@@ -15,7 +15,12 @@
     "appId": "com.asambhav.multi-mco",
     "mac": {
       "target": "dmg",
-      "category": "public.app-category.utilities"
+      "category": "public.app-category.utilities",
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone to record audio for voice input."
+      }
     },
     "win": {
       "target": [
@@ -49,17 +54,20 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@fontsource/roboto": "^5.2.5",
+    "@google/genai": "^0.13.0",
     "@google/generative-ai": "^0.24.0",
     "@hello-pangea/dnd": "^18.0.1",
     "@modelcontextprotocol/sdk": "^1.10.1",
     "@mui/icons-material": "^7.0.2",
     "@mui/material": "^7.0.2",
     "axios": "^1.8.4",
+    "bufferutil": "^4.0.9",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "fix-path": "^4.0.0",
+    "formidable": "^3.5.4",
     "framer-motion": "^12.7.4",
     "install": "^0.13.0",
     "npm": "^11.3.0",
@@ -69,12 +77,14 @@
     "react-router-dom": "^7.5.1",
     "react-toastify": "^11.0.5",
     "rehype-highlight": "^7.0.2",
+    "utf-8-validate": "^6.0.5",
     "uuid": "^11.1.0",
     "zod": "^3.24.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
+    "@types/formidable": "^3.4.5",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@types/which": "^3.0.4",

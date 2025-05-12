@@ -23,5 +23,6 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   // ...
 })
 contextBridge.exposeInMainWorld('api', {
-  getInfo: () => ipcRenderer.invoke('get-info')
+  getInfo: () => ipcRenderer.invoke('get-info'),
+  getMicStatus: () => ipcRenderer.invoke('get-mic-status'),
 });

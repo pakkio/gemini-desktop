@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <!-- For JIT, often needed by V8 in Electron -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <!-- For unsigned executable memory, also often needed by V8 -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <!-- For microphone access -->
+    <key>com.apple.security.device.microphone</key>
+    <true/>
+    <!-- Sometimes 'audio-input' is also listed, though 'microphone' is primary -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+    <!-- If you ever need camera -->
+    <!-- <key>com.apple.security.device.camera</key> -->
+    <!-- <true/> -->
+    <!-- Allow DYLD environment variables if needed by any native modules, usually safe to include -->
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <true/>
+  </dict>
+</plist>
