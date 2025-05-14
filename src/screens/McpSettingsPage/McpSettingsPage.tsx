@@ -23,8 +23,9 @@ import {
 import { useEffect, useState, useCallback } from "react"; // Import useCallback
 import { get, post } from "../../utils/api_helper/api_helper";
 import {
+  SlowMotionVideo as SlowMotionVideoIcon,
   Gamepad as UnityIcon,
-  // ... (Keep all your existing icon imports)
+  Reddit as RedditIcon,
   Cloud as CloudIcon,
   Storage as StorageIcon,
   GitHub as GitHubIcon,
@@ -70,6 +71,7 @@ import {
   Details as DetailsIcon,
   Quickreply as QuickreplyIcon,
   NextWeek as NextWeekIcon,
+  Reddit,
 } from "@mui/icons-material";
 // Import the function
 import { getDefaultServiceConfigs } from "../../utils/serviceConfigs";
@@ -80,6 +82,8 @@ const labelKeyMap: Record<string, string> = {
   "AWS KB Retrieval": "aws-kb-retrieval",
   "Brave Search": "brave-search",
   EverArt: "everart",
+  Playwright: "playwright",
+  Reddit: "reddit",
   Unity: "mcp-unity",
   Everything: "everything",
   Filesystem: "filesystem",
@@ -144,6 +148,7 @@ const iconMap: Record<string, JSX.Element> = {
   "AWS KB Retrieval": <CloudIcon />,
   "Brave Search": <SearchIcon />,
   Unity: <UnityIcon />,
+  Reddit: <RedditIcon />,
   EverArt: <IntegrationInstructionsIcon />,
   Blender: <IntegrationInstructionsIcon />,
   Everything: <SearchIcon />,
@@ -165,6 +170,7 @@ const iconMap: Record<string, JSX.Element> = {
   AgentRCP: <MediationIcon />,
   "Actors Mcp Server": <StorageIcon />,
   "Astra Db Mcp": <DnsIcon />,
+  PlayWright: <SlowMotionVideoIcon />,
   "Azure MCP Server": <HdrAutoIcon />,
   bankless: <AccountBalanceIcon />,
   ChargeBee: <EmojiNatureIcon />,

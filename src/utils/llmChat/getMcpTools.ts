@@ -2,7 +2,7 @@
 
 import { convertMcpSchemaToGeminiSchema } from "./convertMcpSchemaToGeminiSchema";
 import fs from "fs";
-import os from "os"; // <--- ADDED for os.platform()
+import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 import { Tool as McpTool } from "@modelcontextprotocol/sdk/types.js";
@@ -13,7 +13,7 @@ import {
   StdioServerParameters,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { app } from "electron";
-import which from 'which';
+import which from "which";
 
 const mcpClients = new Map<string, McpClient>();
 const toolToServerMap = new Map<string, string>();
@@ -32,84 +32,179 @@ try {
 }
 
 function logToFile(message: string | unknown) {
-  const messageString = typeof message === 'string' ? message : JSON.stringify(message, null, 2);
+  const messageString =
+    typeof message === "string" ? message : JSON.stringify(message, null, 2);
   const timestamp = `[${new Date().toISOString()}]`;
   const logLine = `${timestamp} ${messageString}\n`;
   try {
     fs.appendFileSync(logPath, logLine);
     if (!isPackaged) {
-       console.log(`${timestamp} ${messageString}`);
+      console.log(`${timestamp} ${messageString}`);
     }
   } catch (e) {
-      console.error("Failed to write to log file:", logPath, e);
+    console.error("Failed to write to log file:", logPath, e);
   }
 }
 
 // --- Runner Path Discovery ---
 
-// Find npx path ONCE (EXISTING NPX LOGIC - UNTOUCHED)
+// Find npx path ONCE
 let npxPath: string | null = null;
 try {
-    npxPath = which.sync('npx');
-    logToFile(`Found 'npx' executable via which.sync at: ${npxPath}`);
+  npxPath = which.sync("npx");
+  logToFile(`Found 'npx' executable via which.sync at: ${npxPath}`);
 } catch (e) {
-    logToFile(`⚠️ Could not find 'npx' in the system PATH (via which.sync). Error: ${e instanceof Error ? e.message : String(e)}`);
-    logToFile(`   Please ensure Node.js (which includes npx) is installed and its 'bin' directory is in the system's PATH environment variable.`);
-    logToFile(`   Falling back to using 'npx' directly.`);
-    npxPath = 'npx'; // Fallback
+  logToFile(
+    `⚠️ Could not find 'npx' in the system PATH (via which.sync). Error: ${
+      e instanceof Error ? e.message : String(e)
+    }`
+  );
+  logToFile(
+    `   Please ensure Node.js (which includes npx) is installed and its 'bin' directory is in the system's PATH environment variable.`
+  );
+  logToFile(`   Falling back to using 'npx' directly.`);
+  npxPath = "npx"; // Fallback
 }
 
-// Find uvx path ONCE (NEW UVX LOGIC - mirrors npx pattern)
+// --- Constants for uv and uvx discovery ---
+const platform = os.platform();
+const uvxExecutableName = platform === "win32" ? "uvx.exe" : "uvx";
+const uvExecutableName = platform === "win32" ? "uv.exe" : "uv";
+
+let resourcesBinPath: string;
+if (app.isPackaged) {
+  resourcesBinPath = path.join(process.resourcesPath, "bin");
+} else {
+  // In development, resources/bin might be relative to app root
+  resourcesBinPath = path.join(app.getAppPath(), "resources", "bin");
+}
+const potentialBundledUvPath = path.join(resourcesBinPath, uvExecutableName);
+const potentialBundledUvxPath = path.join(resourcesBinPath, uvxExecutableName);
+
+// Find uv path ONCE (for 'uv' command itself)
+let uvPath: string | null = null;
+logToFile("--- Initializing uv path discovery (for 'uv' command) ---");
+logToFile(
+  `(uv command) Resources bin path for bundled executables: ${resourcesBinPath}`
+);
+
+// 1. Try to find bundled uv
+let foundBundledUv = false;
+try {
+  logToFile(
+    `(uv command) Checking for bundled '${uvExecutableName}' at: ${potentialBundledUvPath}`
+  );
+  fs.accessSync(potentialBundledUvPath, fs.constants.X_OK); // Check uv exists and is executable
+  uvPath = potentialBundledUvPath;
+  foundBundledUv = true;
+  logToFile(
+    `✅ (uv command) Successfully found BUNDLED '${uvExecutableName}' at: ${uvPath}`
+  );
+} catch (uvCheckError) {
+  logToFile(
+    `(uv command) Bundled '${uvExecutableName}' not found or not executable at '${potentialBundledUvPath}'. Error: ${
+      uvCheckError instanceof Error
+        ? uvCheckError.message
+        : String(uvCheckError)
+    }`
+  );
+}
+
+// 2. If bundled uv not found, try finding uv in system PATH
+if (!foundBundledUv) {
+  logToFile(
+    "(uv command) Bundled 'uv' not resolved. Attempting to find 'uv' in system PATH..."
+  );
+  try {
+    uvPath = which.sync("uv");
+    logToFile(
+      `(uv command) Found 'uv' executable via which.sync in system PATH at: ${uvPath}`
+    );
+  } catch (e) {
+    logToFile(
+      `⚠️ (uv command) Could not find 'uv' in the system PATH (via which.sync). Error: ${
+        e instanceof Error ? e.message : String(e)
+      }`
+    );
+    logToFile(
+      `   Please ensure 'uv' is installed (e.g., via pipx or pip) and its location is in the system's PATH, or bundle it correctly.`
+    );
+    logToFile(`   (uv command) Falling back to using 'uv' directly.`);
+    uvPath = "uv"; // Fallback
+  }
+}
+logToFile(`--- (uv command) Final resolved uv path: ${uvPath} ---`);
+
+// Find uvx path ONCE (uses common constants defined above)
 let uvxPath: string | null = null;
 logToFile("--- Initializing uvx path discovery ---");
+logToFile(
+  `(uvx command) Resources bin path for bundled executables: ${resourcesBinPath}`
+);
 
 // 1. Try to find bundled uvx (and its 'uv' dependency)
-const platform = os.platform();
-const uvxExecutableName = platform === 'win32' ? 'uvx.exe' : 'uvx';
-const uvExecutableName = platform === 'win32' ? 'uv.exe' : 'uv';
-
-let bundledUvxBasePath: string;
-if (app.isPackaged) {
-    bundledUvxBasePath = path.join(process.resourcesPath, 'bin');
-} else {
-    bundledUvxBasePath = path.join(app.getAppPath(), 'resources', 'bin');
-}
-const bundledUvxFullPath = path.join(bundledUvxBasePath, uvxExecutableName);
-const bundledUvFullPath = path.join(bundledUvxBasePath, uvExecutableName);
-
 let foundBundledUvx = false;
 try {
-    logToFile(`(uvx) Checking for bundled uvx at: ${bundledUvxFullPath}`);
-    fs.accessSync(bundledUvxFullPath, fs.constants.X_OK); // Check uvx exists and is executable
-    logToFile(`(uvx) Found bundled '${uvxExecutableName}'. Checking for its dependency '${uvExecutableName}' at: ${bundledUvFullPath}`);
-    try {
-        fs.accessSync(bundledUvFullPath, fs.constants.X_OK); // Check uv exists and is executable
-        uvxPath = bundledUvxFullPath;
-        foundBundledUvx = true;
-        logToFile(`✅ Successfully found BUNDLED 'uvx' (and 'uv' dependency) at: ${uvxPath}`);
-    } catch (uvCheckError) {
-        logToFile(`⚠️ Found bundled '${uvxExecutableName}', but its required dependency '${uvExecutableName}' is missing or not executable in '${bundledUvxBasePath}'. Error: ${uvCheckError instanceof Error ? uvCheckError.message : String(uvCheckError)}`);
-        logToFile(`   Ensure both '${uvExecutableName}' and '${uvxExecutableName}' are in '${bundledUvxBasePath}' and executable.`);
-    }
+  logToFile(
+    `(uvx command) Checking for bundled '${uvxExecutableName}' at: ${potentialBundledUvxPath}`
+  );
+  fs.accessSync(potentialBundledUvxPath, fs.constants.X_OK); // Check uvx exists and is executable
+  logToFile(
+    `(uvx command) Found bundled '${uvxExecutableName}'. Checking for its dependency '${uvExecutableName}' at: ${potentialBundledUvPath}`
+  );
+  try {
+    fs.accessSync(potentialBundledUvPath, fs.constants.X_OK); // Check uv dependency exists and is executable
+    uvxPath = potentialBundledUvxPath;
+    foundBundledUvx = true;
+    logToFile(
+      `✅ (uvx command) Successfully found BUNDLED '${uvxExecutableName}' (and verified '${uvExecutableName}' dependency at '${potentialBundledUvPath}') at: ${uvxPath}`
+    );
+  } catch (uvDependencyCheckError) {
+    logToFile(
+      `⚠️ (uvx command) Found bundled '${uvxExecutableName}', but its required dependency '${uvExecutableName}' is missing or not executable at '${potentialBundledUvPath}'. Error: ${
+        uvDependencyCheckError instanceof Error
+          ? uvDependencyCheckError.message
+          : String(uvDependencyCheckError)
+      }`
+    );
+    logToFile(
+      `   Ensure both '${uvExecutableName}' and '${uvxExecutableName}' are in '${resourcesBinPath}' and executable.`
+    );
+  }
 } catch (uvxCheckError) {
-    logToFile(`(uvx) Bundled '${uvxExecutableName}' not found or not executable at '${bundledUvxFullPath}'. Error: ${uvxCheckError instanceof Error ? uvxCheckError.message : String(uvxCheckError)}`);
+  logToFile(
+    `(uvx command) Bundled '${uvxExecutableName}' not found or not executable at '${potentialBundledUvxPath}'. Error: ${
+      uvxCheckError instanceof Error
+        ? uvxCheckError.message
+        : String(uvxCheckError)
+    }`
+  );
 }
 
 // 2. If bundled uvx not found or 'uv' dependency missing, try finding uvx in system PATH
 if (!foundBundledUvx) {
-    logToFile("(uvx) Bundled 'uvx' (with 'uv' dependency) not resolved. Attempting to find 'uvx' in system PATH...");
-    try {
-        uvxPath = which.sync('uvx');
-        logToFile(`Found 'uvx' executable via which.sync in system PATH at: ${uvxPath}`);
-    } catch (e) {
-        logToFile(`⚠️ Could not find 'uvx' in the system PATH (via which.sync). Error: ${e instanceof Error ? e.message : String(e)}`);
-        logToFile(`   Please ensure 'uv' (which includes uvx) is installed and its location is in the system's PATH, or bundle it correctly.`);
-        logToFile(`   Falling back to using 'uvx' directly.`);
-        uvxPath = 'uvx'; // Fallback
-    }
+  logToFile(
+    "(uvx command) Bundled 'uvx' (with 'uv' dependency) not resolved. Attempting to find 'uvx' in system PATH..."
+  );
+  try {
+    uvxPath = which.sync("uvx");
+    logToFile(
+      `(uvx command) Found 'uvx' executable via which.sync in system PATH at: ${uvxPath}`
+    );
+  } catch (e) {
+    logToFile(
+      `⚠️ (uvx command) Could not find 'uvx' in the system PATH (via which.sync). Error: ${
+        e instanceof Error ? e.message : String(e)
+      }`
+    );
+    logToFile(
+      `   Please ensure 'uv' (which includes uvx) is installed and its location is in the system's PATH, or bundle it correctly.`
+    );
+    logToFile(`   (uvx command) Falling back to using 'uvx' directly.`);
+    uvxPath = "uvx"; // Fallback
+  }
 }
-logToFile(`--- Final resolved uvx path: ${uvxPath} ---`);
-
+logToFile(`--- (uvx command) Final resolved uvx path: ${uvxPath} ---`);
 
 // --- Main Function ---
 export async function connectToMcpServers(webSearch: boolean): Promise<{
@@ -121,15 +216,18 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
   const __dirname = path.dirname(__filename);
 
   const configPath = isPackaged
-      ? path.join(app.getPath("userData"), "mcpServicesConfig.json")
-      : path.join(__dirname, "../src/backend/configurations/mcpServicesConfig.json");
+    ? path.join(app.getPath("userData"), "mcpServicesConfig.json")
+    : path.join(
+        __dirname,
+        "../src/backend/configurations/mcpServicesConfig.json"
+      );
 
   logToFile(`--- Starting connectToMcpServers ---`);
-  logToFile(`Running in ${isPackaged ? 'packaged' : 'development'} mode.`);
+  logToFile(`Running in ${isPackaged ? "packaged" : "development"} mode.`);
   logToFile(`Attempting to load MCP config from: ${configPath}`);
-  logToFile(`NPM Executable Path (npx): ${npxPath}`); // Log resolved npxPath
-  logToFile(`UV Executable Path (uvx): ${uvxPath}`); // Log resolved uvxPath
-
+  logToFile(`NPM Executable Path (npx): ${npxPath}`);
+  logToFile(`UVX Executable Path (uvx): ${uvxPath}`);
+  logToFile(`UV Executable Path (uv): ${uvPath}`);
 
   mcpClients.clear();
   toolToServerMap.clear();
@@ -139,18 +237,34 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
   let data: string;
   try {
     if (isPackaged && !fs.existsSync(configPath)) {
-        logToFile(`⚠️ MCP config file not found at ${configPath}. No servers will be started.`);
-        return { allGeminiTools: [], mcpClients: new Map(), toolToServerMap: new Map() };
+      logToFile(
+        `⚠️ MCP config file not found at ${configPath}. No servers will be started.`
+      );
+      return {
+        allGeminiTools: [],
+        mcpClients: new Map(),
+        toolToServerMap: new Map(),
+      };
     }
     data = fs.readFileSync(configPath, "utf-8");
   } catch (readError: any) {
-    logToFile(`❌ Failed to read MCP config file at ${configPath}: ${readError.message}`);
-    return { allGeminiTools: [], mcpClients: new Map(), toolToServerMap: new Map() };
+    logToFile(
+      `❌ Failed to read MCP config file at ${configPath}: ${readError.message}`
+    );
+    return {
+      allGeminiTools: [],
+      mcpClients: new Map(),
+      toolToServerMap: new Map(),
+    };
   }
 
   if (!data) {
     logToFile("⚠️ MCP config file is empty or could not be read.");
-    return { allGeminiTools: [], mcpClients: new Map(), toolToServerMap: new Map() };
+    return {
+      allGeminiTools: [],
+      mcpClients: new Map(),
+      toolToServerMap: new Map(),
+    };
   }
 
   let parsedConfig;
@@ -158,13 +272,15 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
     parsedConfig = JSON.parse(data);
   } catch (parseError: any) {
     logToFile(`❌ Failed to parse MCP config file: ${parseError.message}`);
-    return { allGeminiTools: [], mcpClients: new Map(), toolToServerMap: new Map() };
+    return {
+      allGeminiTools: [],
+      mcpClients: new Map(),
+      toolToServerMap: new Map(),
+    };
   }
 
   const serverConfigs = parsedConfig?.leftList || [];
   logToFile(`Found ${serverConfigs.length} server configurations.`);
-
-  // const commandToExecute = npxPath || 'npx'; // This was for npx-only default
 
   const connectionPromises = serverConfigs.map(
     async (serverConfig: {
@@ -172,7 +288,7 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
       key: string;
       config: {
         env?: Record<string, string>;
-        command?: string; // Can be "npx", "uvx", or a full path
+        command?: string; // Can be "npx", "uvx", "uv", or a full path
         args: string[];
       };
     }) => {
@@ -182,69 +298,114 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
           ? [serverConfig?.config?.env?.ABSOLUTE_PATH_TO_BUILD]
           : [];
       }
+      if (serverConfig.key === "reddit") {
+        if (serverConfig?.config?.env?.PATH_OF_GITHUB_REPO) {
+          serverConfig.config.args.splice(
+            1,
+            0,
+            serverConfig?.config?.env?.PATH_OF_GITHUB_REPO
+          );
+        }
+      }
 
-      if(!webSearch && serverConfig.key === 'brave-search') {
-          logToFile(`Skipping server "${serverConfig.label}" (key: ${serverConfig.key}) because webSearch is false.`);
-          return;
+      if (!webSearch && serverConfig.key === "brave-search") {
+        logToFile(
+          `Skipping server "${serverConfig.label}" (key: ${serverConfig.key}) because webSearch is false.`
+        );
+        return;
       }
       if (!serverConfig.config || !Array.isArray(serverConfig.config.args)) {
         logToFile(JSON.stringify(serverConfig, null, 2));
-        logToFile(`❌ Invalid configuration for server "${serverConfig.label}": Missing 'config' or 'args'. Skipping.`);
+        logToFile(
+          `❌ Invalid configuration for server "${serverConfig.label}": Missing 'config' or 'args'. Skipping.`
+        );
         return;
       }
 
       let specificCommand: string;
       let runnerType: string; // For logging
 
-      if (serverConfig.config.command === 'uvx') {
-          specificCommand = uvxPath || 'uvx'; // Use resolved uvxPath, or fallback to 'uvx' string
-          runnerType = 'uvx';
-          if (specificCommand === 'uvx' && uvxPath !== 'uvx') { // i.e. uvxPath was a full path but we're using the string
-              logToFile(`Server "${serverConfig.label}": Using 'uvx' directly as resolved uvxPath is '${uvxPath}' but config specifically asks for 'uvx'. This is unusual.`);
-          } else if (uvxPath === 'uvx') {
-              logToFile(`Server "${serverConfig.label}": Using 'uvx' directly because a specific path for uvx (bundled or system) was not found or resolved.`);
-          }
-      } else if (serverConfig.config.command && serverConfig.config.command !== 'npx') {
-          // Custom command (neither 'npx' nor 'uvx' explicitly)
-          specificCommand = serverConfig.config.command;
-          runnerType = 'custom';
+      if (serverConfig.config.command === "uvx") {
+        specificCommand = uvxPath || "uvx";
+        runnerType = "uvx";
+        if (
+          specificCommand === "uvx" &&
+          (uvxPath === "uvx" || uvxPath === null)
+        ) {
+          logToFile(
+            `Server "${serverConfig.label}": Using 'uvx' directly as a specific path for uvx (bundled or system) was not found or resolved.`
+          );
+        }
+      } else if (serverConfig.config.command === "uv") {
+        specificCommand = uvPath || "uv";
+        runnerType = "uv";
+        if (specificCommand === "uv" && (uvPath === "uv" || uvPath === null)) {
+          logToFile(
+            `Server "${serverConfig.label}": Using 'uv' directly as a specific path for 'uv' (bundled or system) was not found or resolved.`
+          );
+        }
+      } else if (
+        serverConfig.config.command &&
+        serverConfig.config.command !== "npx"
+      ) {
+        // Custom command (neither 'npx', 'uvx', nor 'uv' explicitly)
+        specificCommand = serverConfig.config.command;
+        runnerType = "custom";
       } else {
-          // Default to npx or if command is 'npx'
-          specificCommand = npxPath || 'npx'; // Use resolved npxPath, or fallback to 'npx' string
-          runnerType = 'npx';
-          if (npxPath === 'npx') { // Only log if we are using the fallback string for npx
-             logToFile(`Server "${serverConfig.label}": Config command is '${serverConfig.config.command || "default"}', using 'npx' directly as a full path was not found.`);
-          }
-      }
-
-      // Original skip logic for npx if it was the effective command AND no npxPath resolved to a full path (i.e., npxPath is 'npx')
-      // This check should be about the *resolved* npxPath, not the fallback string.
-      // The original npxPath is either a full path or the string 'npx'.
-      // If specificCommand effectively becomes 'npx' AND the original npxPath discovery failed (so npxPath is 'npx' string)
-      // This check was: `if (specificCommand === 'npx' && !npxPath)`
-      // If npxPath is 'npx' (string), then !npxPath is false. This check needs care.
-      // The intent was: if we need npx and all we have is the string 'npx' (because which.sync failed), then it's risky.
-
-      // Let's refine the skip/warning:
-      if (runnerType === 'npx' && specificCommand === 'npx' && (npxPath === 'npx' || npxPath === null) ) {
-          // This means npx is the runner, we're trying to use the 'npx' string command,
-          // because our initial attempt to find a full path for npx failed.
+        // Default to npx or if command is 'npx' or command is undefined
+        specificCommand = npxPath || "npx";
+        runnerType = "npx";
+        if (
+          specificCommand === "npx" &&
+          (npxPath === "npx" || npxPath === null)
+        ) {
           logToFile(
-              `⚠️ Server "${serverConfig.label}" (npx runner): Attempting to use 'npx' command directly as a full path was not found. ` +
-              `This relies on 'npx' being in the OS's PATH for the packaged app, which may not be the case.`
+            `Server "${serverConfig.label}": Config command is '${
+              serverConfig.config.command || "default to npx"
+            }', using 'npx' directly as a full path was not found.`
           );
-          // Original code skipped here if !npxPath, but npxPath is now always set (either full path or 'npx' string)
-          // So, we don't skip, just warn, and let StdioClientTransport fail if the OS can't find 'npx'.
-      }
-      if (runnerType === 'uvx' && specificCommand === 'uvx' && (uvxPath === 'uvx' || uvxPath === null)) {
-          logToFile(
-              `⚠️ Server "${serverConfig.label}" (uvx runner): Attempting to use 'uvx' command directly as a full path (bundled or system) was not found. ` +
-              `This relies on 'uvx' being in the OS's PATH for the packaged app.`
-          );
+        }
       }
 
+      // Warnings for using fallback string commands if full paths weren't resolved
+      if (
+        runnerType === "npx" &&
+        specificCommand === "npx" &&
+        (npxPath === "npx" || npxPath === null)
+      ) {
+        logToFile(
+          `⚠️ Server "${serverConfig.label}" (npx runner): Attempting to use 'npx' command directly as a full path was not found. ` +
+            `This relies on 'npx' being in the OS's PATH for the packaged app, which may not be the case.`
+        );
+      }
+      if (
+        runnerType === "uvx" &&
+        specificCommand === "uvx" &&
+        (uvxPath === "uvx" || uvxPath === null)
+      ) {
+        logToFile(
+          `⚠️ Server "${serverConfig.label}" (uvx runner): Attempting to use 'uvx' command directly as a full path (bundled or system) was not found. ` +
+            `This relies on 'uvx' being in the OS's PATH for the packaged app.`
+        );
+      }
+      if (
+        runnerType === "uv" &&
+        specificCommand === "uv" &&
+        (uvPath === "uv" || uvPath === null)
+      ) {
+        logToFile(
+          `⚠️ Server "${serverConfig.label}" (uv runner): Attempting to use 'uv' command directly as a full path (bundled or system) was not found. ` +
+            `This relies on 'uv' being in the OS's PATH for the packaged app.`
+        );
+      }
 
-      logToFile(`Processing server config: ${serverConfig.label} (Runner: ${runnerType}, Command: ${specificCommand}, Args: ${JSON.stringify(serverConfig.config.args)})`);
+      logToFile(
+        `Processing server config: ${
+          serverConfig.label
+        } (Runner: ${runnerType}, Command: ${specificCommand}, Args: ${JSON.stringify(
+          serverConfig.config.args
+        )})`
+      );
 
       let transport: StdioClientTransport | null = null;
 
@@ -261,21 +422,27 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
         }
 
         const params: StdioServerParameters = {
-            command: specificCommand,
-            args: serverConfig.config.args,
-            env: filteredChildEnv as Record<string, string>,
+          command: specificCommand,
+          args: serverConfig.config.args,
+          env: filteredChildEnv as Record<string, string>,
         };
 
-        logToFile(`Attempting to start MCP server "${serverConfig.label}" with command: ${params.command} ${(params.args || []).join(' ')}`);
+        logToFile(
+          `Attempting to start MCP server "${
+            serverConfig.label
+          }" with command: ${params.command} ${(params.args || []).join(" ")}`
+        );
 
         transport = new StdioClientTransport(params);
 
         transport.onclose = () => {
-            logToFile(`Transport explicitly closed for ${serverConfig.label}.`);
+          logToFile(`Transport explicitly closed for ${serverConfig.label}.`);
         };
         transport.onerror = (err) => {
-             logToFile(`Transport error for ${serverConfig.label}: ${err.message}`);
-        }
+          logToFile(
+            `Transport error for ${serverConfig.label}: ${err.message}`
+          );
+        };
 
         const client = new McpClient({
           name: `mcp-gemini-backend-${serverConfig.key}`,
@@ -285,14 +452,18 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
         await client.connect(transport);
 
         mcpClients.set(serverConfig.key, client);
-        logToFile(`MCP Client connected for ${serverConfig.label}. Listing tools...`);
+        logToFile(
+          `MCP Client connected for ${serverConfig.label}. Listing tools...`
+        );
 
         const toolsResult = await client.listTools();
         const currentServerTools = toolsResult.tools;
         logToFile(
-          `✅ Connected to "${
-            serverConfig.key
-          }" (${serverConfig.label}) using ${runnerType} with tools: ${currentServerTools.map((t) => t.name).join(", ")}`
+          `✅ Connected to "${serverConfig.key}" (${
+            serverConfig.label
+          }) using ${runnerType} with tools: ${currentServerTools
+            .map((t) => t.name)
+            .join(", ")}`
         );
 
         currentServerTools.forEach((tool) => {
@@ -300,7 +471,9 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
             logToFile(
               `⚠️ Tool name conflict: Tool "${tool.name}" from server "${
                 serverConfig.key
-              }" (${serverConfig.label}) overrides tool from server "${toolToServerMap.get(
+              }" (${
+                serverConfig.label
+              }) overrides tool from server "${toolToServerMap.get(
                 tool.name
               )}".`
             );
@@ -308,46 +481,89 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
           allMcpTools.push(tool);
           toolToServerMap.set(tool.name, serverConfig.key);
         });
-
       } catch (e: any) {
         const errorMsg = e instanceof Error ? e.message : String(e);
-        const errorStack = e instanceof Error ? `\nStack: ${e.stack}`: '';
+        const errorStack = e instanceof Error ? `\nStack: ${e.stack}` : "";
 
         logToFile(`❌ Failed operation for MCP server "${serverConfig.label}"`);
         logToFile(`   Runner Type: ${runnerType}`);
         logToFile(`   Command Attempted: ${specificCommand}`);
-        logToFile(`   Arguments: ${JSON.stringify(serverConfig.config.args || [])}`);
+        logToFile(
+          `   Arguments: ${JSON.stringify(serverConfig.config.args || [])}`
+        );
         logToFile(`   Error: ${errorMsg}`);
 
-        if (errorMsg.includes('ENOENT')) {
-             logToFile(`   Hint: ENOENT usually means the command '${specificCommand}' was not found or is not executable.`);
-             if (runnerType === 'npx') {
-                 logToFile(`         - For npx: Is Node.js installed and 'npx' (resolved to '${npxPath}') in the system PATH accessible to the app?`);
-             } else if (runnerType === 'uvx') {
-                 logToFile(`         - For uvx: Was 'uvx' (resolved to '${uvxPath}') found bundled (with 'uv' dependency) or in system PATH accessible to the app?`);
-                 logToFile(`         - If bundled, ensure 'uv' & 'uvx' are in 'resources/bin/' and executable.`);
-             } else { // Custom command
-                 logToFile(`         - If using a custom command, is '${specificCommand}' correct and in PATH or an absolute path?`);
-             }
-        } else if (errorMsg.includes('closed') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('Transport closed')) {
-             logToFile(`   Hint: Connection closed/refused suggests the server process started but exited or crashed immediately.`);
-             logToFile(`         - Check the server's own logs/output if possible (e.g., if it's a script, add logging).`);
-             logToFile(`         - If using 'uvx', this can happen if 'uvx' starts but the underlying 'uv' command fails or the target MCP script (e.g. 'blender-mcp') crashes.`);
-             logToFile(`         - Check requirements (e.g., API keys in env: ${Object.keys(serverConfig.config.env || {}).join(', ')})`);
-             logToFile(`         - Try running the command manually in a terminal: ${specificCommand} ${(serverConfig.config.args || []).join(' ')}`);
+        if (errorMsg.includes("ENOENT")) {
+          logToFile(
+            `   Hint: ENOENT usually means the command '${specificCommand}' was not found or is not executable.`
+          );
+          if (runnerType === "npx") {
+            logToFile(
+              `         - For npx: Is Node.js installed and 'npx' (resolved to '${npxPath}') in the system PATH accessible to the app?`
+            );
+          } else if (runnerType === "uvx") {
+            logToFile(
+              `         - For uvx: Was 'uvx' (resolved to '${uvxPath}') found bundled (with 'uv' dependency in '${resourcesBinPath}') or in system PATH accessible to the app?`
+            );
+            logToFile(
+              `         - If bundled, ensure 'uv' & 'uvx' are in '${resourcesBinPath}' and executable.`
+            );
+          } else if (runnerType === "uv") {
+            logToFile(
+              `         - For uv: Was 'uv' (resolved to '${uvPath}') found bundled (in '${resourcesBinPath}') or in system PATH accessible to the app?`
+            );
+            logToFile(
+              `         - If bundled, ensure 'uv' is in '${resourcesBinPath}' and executable.`
+            );
+          } else {
+            // Custom command
+            logToFile(
+              `         - If using a custom command, is '${specificCommand}' correct and in PATH or an absolute path?`
+            );
+          }
+        } else if (
+          errorMsg.includes("closed") ||
+          errorMsg.includes("ECONNREFUSED") ||
+          errorMsg.includes("Transport closed")
+        ) {
+          logToFile(
+            `   Hint: Connection closed/refused suggests the server process started but exited or crashed immediately.`
+          );
+          logToFile(
+            `         - Check the server's own logs/output if possible (e.g., if it's a script, add logging).`
+          );
+          if (runnerType === "uvx") {
+            logToFile(
+              `         - If using 'uvx', this can happen if 'uvx' starts but the underlying 'uv' command fails or the target MCP script (e.g. 'blender-mcp') crashes.`
+            );
+          } else if (runnerType === "uv") {
+            logToFile(
+              `         - If using 'uv', this can happen if 'uv' starts but the script it's supposed to run (e.g., via 'uv run ...') fails or crashes.`
+            );
+          }
+          logToFile(
+            `         - Check requirements (e.g., API keys in env: ${Object.keys(
+              serverConfig.config.env || {}
+            ).join(", ")})`
+          );
+          logToFile(
+            `         - Try running the command manually in a terminal: ${specificCommand} ${(
+              serverConfig.config.args || []
+            ).join(" ")}`
+          );
         } else {
-            logToFile(`   Stack: ${errorStack}`);
+          logToFile(`   Stack: ${errorStack}`);
         }
 
         if (mcpClients.has(serverConfig.key)) {
-            mcpClients.delete(serverConfig.key);
+          mcpClients.delete(serverConfig.key);
         }
-        if (transport && typeof transport.close === 'function') {
-            try {
-                transport.close();
-            } catch (closeErr) {
-                logToFile(`   Error closing transport during cleanup: ${closeErr}`);
-            }
+        if (transport && typeof transport.close === "function") {
+          try {
+            transport.close();
+          } catch (closeErr) {
+            logToFile(`   Error closing transport during cleanup: ${closeErr}`);
+          }
         }
       }
     }
@@ -361,12 +577,18 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
       description: tool.description || "No description provided",
       parameters: convertMcpSchemaToGeminiSchema(tool.inputSchema),
     }));
-    logToFile(`🔌 Total ${allMcpTools.length} MCP tools aggregated for Gemini from ${mcpClients.size} connected server(s).`);
+    logToFile(
+      `🔌 Total ${allMcpTools.length} MCP tools aggregated for Gemini from ${mcpClients.size} connected server(s).`
+    );
   } else {
-    logToFile("⚠️ No MCP tools were successfully loaded from any connected server.");
+    logToFile(
+      "⚠️ No MCP tools were successfully loaded from any connected server."
+    );
   }
 
-  logToFile(`connectToMcpServers finished. ${mcpClients.size} clients connected. ${toolToServerMap.size} tools mapped.`);
+  logToFile(
+    `connectToMcpServers finished. ${mcpClients.size} clients connected. ${toolToServerMap.size} tools mapped.`
+  );
 
   return { allGeminiTools, mcpClients, toolToServerMap };
 }

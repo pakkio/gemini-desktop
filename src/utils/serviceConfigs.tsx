@@ -23,7 +23,22 @@ export async function getDefaultServiceConfigs(path: string) {
       env: {
         UNITY_PORT: "",
         ABSOLUTE_PATH_TO_BUILD: "",
-      }
+      },
+    },
+    playwright: {
+      command: "npx",
+      args: ["@playwright/mcp@latest"],
+    },
+    reddit: {
+      command: "uv",
+      args: ["--directory", "run", "server.py"],
+      env: {
+        REDDIT_CLIENT_ID: "",
+        REDDIT_CLIENT_SECRET: "",
+        REDDIT_USERNAME: "",
+        REDDIT_PASSWORD: "",
+        PATH_OF_GITHUB_REPO: "",
+      },
     },
     "brave-search": {
       command: "npx",
