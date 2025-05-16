@@ -5,47 +5,122 @@ import {
   Part,
   FunctionCall,
   GenerateContentResponse,
-  GenerateContentResult, // Import this type
-  // If you have access to the specific ChatSession type, import it:
-  // import { ChatSession } from "@google/generative-ai";
-  // Otherwise, using 'any' for the chat parameter in the helper is acceptable
+  GenerateContentResult,
 } from "@google/generative-ai";
+import type { Request, Response } from "express";
+import formidable from "formidable"; // Removed 'File as FormidableFile' as it's not used
 import { connectToMcpServers } from "../../../utils/llmChat/getMcpTools";
 import { initializeAndGetModel } from "../../../llm/gemini";
-import * as fs from "fs/promises"; // Import Node.js filesystem promises API
-import * as path from "path"; // Import Node.js path module
+import * as fs from "fs/promises";
+import * as path from "path";
+import { parseAudioFile } from "../../../utils/llmChat/parsers/audioParser";
+import { File as FormidableFile } from "formidable";
+import { parseVideoFile } from "../../../utils/llmChat/parsers/videoParser";
+import { parseImageFile } from "../../../utils/llmChat/parsers/imageParser";
+import { parsePDFFile } from "../../../utils/llmChat/parsers/pdfParser";
+import { parseTextFile } from "../../../utils/llmChat/parsers/txtParser";
+import { parseCSVFile } from "../../../utils/llmChat/parsers/csvParser";
+import { parseDocxFile } from "../../../utils/llmChat/parsers/docxParser";
+// import { parseDocFile } from "../../../utils/llmChat/parsers/docParser";
+import { parseExcelFile } from "../../../utils/llmChat/parsers/excelParser";
+import { parsePptxFile } from "../../../utils/llmChat/parsers/pptxParser";
+// import { parsePptFile } from "../../../utils/llmChat/parsers/pptParser";
 
-// --- Configuration for Logging ---
 const LOG_DIRECTORY = process.cwd();
 
-// --- Helper function for delay ---
+const parseForm = (
+  req: Request
+): Promise<{
+  fields: formidable.Fields;
+  files: formidable.Files;
+  webSearch: boolean; // Changed to boolean
+  model: string | string[] | undefined;
+  message: string | string[] | undefined;
+  history: Content[];
+}> => {
+  return new Promise((resolve, reject) => {
+    const form = formidable({
+      // keepExtensions: true,
+      // uploadDir: '/path/to/temp/uploads',
+      // maxFileSize: 50 * 1024 * 1024,
+    });
+
+    form.parse(req, (err, incomingFields, incomingFiles) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      let parsedHistory: Content[] = [];
+      const historyField = incomingFields.history;
+      let historyJsonString: string | undefined;
+
+      if (Array.isArray(historyField)) {
+        historyJsonString = historyField[0];
+      } else {
+        historyJsonString = historyField as string | undefined;
+      }
+
+      if (historyJsonString) {
+        try {
+          const tempHistory = JSON.parse(historyJsonString);
+          if (Array.isArray(tempHistory)) {
+            parsedHistory = tempHistory as Content[];
+          } else {
+            console.warn(
+              "Parsed history from form is not an array. Using empty history."
+            );
+          }
+        } catch (parseError) {
+          console.warn(
+            `Failed to parse 'history' field from form data: ${
+              (parseError as Error).message
+            }. Using empty history.`
+          );
+        }
+      }
+
+      // Convert webSearch field to boolean
+      const webSearchField = incomingFields.webSearch;
+      let webSearchEnabled = false; // Default to false
+      if (typeof webSearchField === "string") {
+        webSearchEnabled = ["true", "on", "1"].includes(webSearchField);
+      } else if (Array.isArray(webSearchField) && webSearchField.length > 0) {
+        // If it's an array (e.g., multiple form fields with the same name), check the first.
+        webSearchEnabled = ["true", "on", "1"].includes(
+          webSearchField[0].toLowerCase()
+        );
+      }
+      // If webSearchField is undefined or an empty array, webSearchEnabled remains false.
+
+      resolve({
+        fields: incomingFields,
+        files: incomingFiles,
+        webSearch: webSearchEnabled, // Pass the boolean value
+        model: incomingFields.model,
+        message: incomingFields.message,
+        history: parsedHistory,
+      });
+    });
+  });
+};
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// --- Retry configuration for MCP Tools ---
-const MCP_TOOL_MAX_RETRIES = 3; // Number of retries *after* the initial attempt
-const MCP_TOOL_RETRY_DELAY_MS = 1000; // Delay between retries in milliseconds
+const MCP_TOOL_MAX_RETRIES = 3;
+const MCP_TOOL_RETRY_DELAY_MS = 1000;
 const TOTAL_MCP_TOOL_ATTEMPTS = 1 + MCP_TOOL_MAX_RETRIES;
 
-// --- Retry configuration for Gemini API Calls ---
-const GEMINI_API_MAX_RETRIES = 2; // Retry API calls 2 times after the initial attempt
-const GEMINI_API_RETRY_DELAY_MS = 1500; // Delay for API retries (slightly longer)
+const GEMINI_API_MAX_RETRIES = 2;
+const GEMINI_API_RETRY_DELAY_MS = 1500;
 const TOTAL_GEMINI_API_ATTEMPTS = 1 + GEMINI_API_MAX_RETRIES;
 
-/**
- * Asynchronously logs the user query and chatbot response to a model-specific file
- * located in the project's root directory.
- * Appends log entries to the file.
- *
- * @param modelName - The name of the LLM model used (e.g., "gemini-1.5-flash"). Used directly for the filename.
- * @param userQuery - The original query sent by the user.
- * @param chatbotResponse - The final response generated by the chatbot.
- */
 const logChatInteraction = async (
   modelName: string,
   userQuery: string,
   chatbotResponse: string
 ): Promise<void> => {
-  let logFilePath = ""; // Define filePath outside try for use in catch
+  let logFilePath = "";
   try {
     const sanitizedModelName = modelName
       .replace(/[^a-z0-9_\-\.]/gi, "_")
@@ -78,18 +153,8 @@ ${chatbotResponse}
   }
 };
 
-/**
- * Helper function to send messages to the Gemini API with retry logic
- * specifically for transient errors like 500 Internal Server Error.
- *
- * @param chat - The ChatSession object from the Gemini SDK. Use 'any' if type is unavailable.
- * @param messageToSend - The message content (string, Part, or array).
- * @param attemptInfo - A description of the call (e.g., "initial user message", "tool responses") for logging.
- * @returns The result from chat.sendMessage.
- * @throws The last error encountered if all retry attempts fail.
- */
 async function sendMessageWithRetry(
-  chat: any, // Replace 'any' with 'ChatSession' if imported
+  chat: any,
   messageToSend: string | Part | Array<string | Part>,
   attemptInfo: string
 ): Promise<GenerateContentResult> {
@@ -103,31 +168,24 @@ async function sendMessageWithRetry(
         `  [API Attempt ${attempt}/${TOTAL_GEMINI_API_ATTEMPTS}] Sending ${attemptInfo} to Gemini...`
       );
       const result = await chat.sendMessage(messageToSend);
-
-      // Optional: Check for non-error responses that still indicate issues (e.g., blocked content)
       if (result.response?.promptFeedback?.blockReason) {
         console.warn(
           `  [API Attempt ${attempt}] Gemini response potentially blocked: ${result.response.promptFeedback.blockReason}. Proceeding as API call succeeded.`
         );
-        // Decide if you want to retry block errors - currently not retrying them here.
       }
-
       console.log(`  [API Attempt ${attempt}] SUCCESS sending ${attemptInfo}.`);
-      return result; // Success!
+      return result;
     } catch (error: any) {
       lastError = error;
       console.warn(
         `  [API Attempt ${attempt}/${TOTAL_GEMINI_API_ATTEMPTS}] FAILED sending ${attemptInfo}. Error:`,
         error.message || error
       );
-
-      // Check if it's a potentially retryable error (e.g., 5xx errors).
-      // The SDK might wrap errors, so checking message content is often necessary.
       const isRetryable =
         error.message?.includes("500 Internal Server Error") ||
-        error.message?.includes("503 Service Unavailable") || // Add other retryable conditions if needed
-        error.message?.includes("fetch failed") || // Network errors
-        error.message?.includes("timeout"); // Timeout errors
+        error.message?.includes("503 Service Unavailable") ||
+        error.message?.includes("fetch failed") ||
+        error.message?.includes("timeout");
 
       if (isRetryable && attempt < TOTAL_GEMINI_API_ATTEMPTS) {
         console.log(
@@ -138,11 +196,10 @@ async function sendMessageWithRetry(
         console.error(
           `❌ Gemini API call for ${attemptInfo} failed after ${attempt} attempts. Not retrying or max retries reached.`
         );
-        throw lastError; // Rethrow the last error to be caught by the main handler
+        throw lastError;
       }
     }
   }
-  // This line should theoretically not be reached due to the throw in the loop, but satisfies TypeScript
   throw (
     lastError ||
     new Error(
@@ -151,18 +208,93 @@ async function sendMessageWithRetry(
   );
 }
 
-export const chatWithLLM = async (req: any, res: any) => {
-  const { message, history, model: modelName, webSearch } = req.body;
+export const chatWithLLM = async (req: Request, res: Response) => {
+  const {
+    message: userMessageField,
+    history,
+    model: modelNameField,
+    webSearch, // This is now a boolean
+    // Prefixed with _ if not used yet, to avoid "unused variable" warnings.
+    // Remove them if you are sure they won't be used.
+    files: _files,
+    fields: _fields,
+  } = await parseForm(req);
 
-  if (!message) {
+  const contentFile = _files?.files?.[0] as FormidableFile | undefined;
+
+  let contentReadFromFile: string | boolean = "";
+  const mimeType = contentFile?.mimetype || undefined;
+  const originalFilename = contentFile?.originalFilename || "";
+  const fileExtension = originalFilename.split(".").pop()?.toLowerCase() || "";
+  if (contentFile?.mimetype?.includes("audio/")) {
+    contentReadFromFile = await parseAudioFile(contentFile);
+  }
+  if (contentFile?.mimetype?.includes("video/")) {
+    contentReadFromFile = await parseVideoFile(contentFile);
+  }
+  if (contentFile?.mimetype?.includes("image/")) {
+    contentReadFromFile = await parseImageFile(contentFile);
+  }
+  if (contentFile?.mimetype?.includes("application/pdf")) {
+    contentReadFromFile = await parsePDFFile(contentFile);
+  }
+  if (contentFile?.mimetype?.includes("application/pdf")) {
+    contentReadFromFile = await parsePDFFile(contentFile);
+  }
+  if (mimeType === "text/plain" || fileExtension === "txt") {
+    contentReadFromFile = await parseTextFile(contentFile);
+  }
+  if (mimeType === "text/csv" || fileExtension === "csv") {
+    contentReadFromFile = await parseCSVFile(contentFile);
+  }
+  if (
+    mimeType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    fileExtension === "docx"
+  ) {
+    contentReadFromFile = await parseDocxFile(contentFile);
+  }
+  // if (mimeType === "application/msword" || fileExtension === "doc") {
+  //   contentReadFromFile = await parseDocFile(contentFile);
+  // }
+  if (
+    mimeType ===
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || // XLSX new mime
+    mimeType === "application/vnd.ms-excel" || // XLS and sometimes XLSX old mime
+    fileExtension === "xlsx" ||
+    fileExtension === "xls"
+  ) {
+    contentReadFromFile = await parseExcelFile(contentFile);
+  }
+  if (
+    mimeType ===
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
+    fileExtension === "pptx"
+  ) {
+    contentReadFromFile = await parsePptxFile(contentFile);
+  }
+  // if (mimeType === "application/vnd.ms-powerpoint" || fileExtension === "ppt") {
+  //   contentReadFromFile = await parsePptFile(contentFile);
+  // }
+  let currentMessage = Array.isArray(userMessageField)
+    ? userMessageField[0]
+    : userMessageField;
+  const currentModelName = Array.isArray(modelNameField)
+    ? modelNameField[0]
+    : modelNameField;
+
+  if (!currentMessage) {
     return res.status(400).json({ error: "Message is required" });
   }
-  if (!modelName) {
+  if (!currentModelName) {
     return res.status(400).json({ error: "Model name ('model') is required" });
   }
-
+  if (contentReadFromFile) {
+    currentMessage =
+      currentMessage + `\nCONTEXT OF FILE\n ${contentReadFromFile}`;
+  }
   try {
-    // --- Tool and MCP Server Setup ---
+    // webSearch is now directly a boolean
     const { allGeminiTools, mcpClients, toolToServerMap } =
       await connectToMcpServers(webSearch);
 
@@ -171,41 +303,36 @@ export const chatWithLLM = async (req: any, res: any) => {
       allGeminiTools.map((t) => t.name)
     );
     console.log("Connected MCP Clients:", Array.from(mcpClients.keys()));
-    // console.log("Tool to Server Map:", Object.fromEntries(toolToServerMap)); // Can be verbose
 
     if (mcpClients.size === 0 && allGeminiTools.length > 0) {
       console.warn("Warning: Tools defined but no MCP Servers are connected.");
-      return res
-        .status(503)
-        .json({
-          error: "Tools require MCP Servers, but none are connected.",
-          toolNames: allGeminiTools.map((t) => t.name),
-        });
+      return res.status(503).json({
+        error: "Tools require MCP Servers, but none are connected.",
+        toolNames: allGeminiTools.map((t) => t.name),
+      });
     }
 
-    // --- Initialize LLM ---
-    const geminiModel = await initializeAndGetModel(modelName);
+    const geminiModel = await initializeAndGetModel(
+      currentModelName,
+      contentReadFromFile
+    );
     if (!geminiModel) {
-      return res
-        .status(503)
-        .json({
-          error: `Server LLM '${modelName}' not configured or failed to initialize`,
-        });
+      return res.status(503).json({
+        error: `Server LLM '${currentModelName}' not configured or failed to initialize`,
+      });
     }
 
-    // --- Start Chat ---
     const chat = geminiModel.startChat({
-      history: (history || []) as Content[],
+      history: history,
       tools:
         allGeminiTools.length > 0
           ? [{ functionDeclarations: allGeminiTools }]
           : undefined,
     });
 
-    // --- Send Initial Message (with Retry) ---
     let result: GenerateContentResult = await sendMessageWithRetry(
       chat,
-      message,
+      currentMessage,
       "initial user message"
     );
     let response: GenerateContentResponse | undefined = result.response;
@@ -217,7 +344,6 @@ export const chatWithLLM = async (req: any, res: any) => {
         ?.filter((part: Part) => !!part.functionCall)
         .map((part: Part) => part.functionCall as FunctionCall);
 
-    // --- Handle Function Calls (Tool Use) ---
     while (functionCallsToProcess && functionCallsToProcess.length > 0) {
       console.log(
         `Gemini requested ${functionCallsToProcess.length} tool call(s):`,
@@ -226,7 +352,6 @@ export const chatWithLLM = async (req: any, res: any) => {
 
       const functionResponses: Part[] = [];
 
-      // Process tool calls (using Promise.all for potential concurrency)
       await Promise.all(
         functionCallsToProcess.map(async (call) => {
           const toolName = call.name;
@@ -258,7 +383,6 @@ export const chatWithLLM = async (req: any, res: any) => {
             toolArgs
           );
 
-          // --- Retry Logic for Specific Tool Call ---
           let attempt = 0;
           let success = false;
           let mcpToolResult: any = null;
@@ -277,7 +401,7 @@ export const chatWithLLM = async (req: any, res: any) => {
               console.log(
                 `  [MCP Tool Attempt ${attempt}] SUCCESS for tool "${toolName}". Raw Response:`,
                 mcpToolResult
-              ); // Log raw response
+              );
               success = true;
             } catch (toolError: any) {
               lastToolError = toolError;
@@ -297,14 +421,12 @@ export const chatWithLLM = async (req: any, res: any) => {
                 );
               }
             }
-          } // End MCP tool retry loop
+          }
 
-          // --- Process Tool Call Result (and simplify content) ---
           if (success && mcpToolResult) {
             let responseContent: any =
-              "Tool executed successfully but produced no specific content."; // Default if simplification fails
+              "Tool executed successfully but produced no specific content.";
 
-            // --- Attempt to simplify content before sending back ---
             try {
               if (typeof mcpToolResult.content === "string") {
                 responseContent = mcpToolResult.content;
@@ -312,35 +434,29 @@ export const chatWithLLM = async (req: any, res: any) => {
                 Array.isArray(mcpToolResult.content) &&
                 mcpToolResult.content.length > 0
               ) {
-                // Attempt to extract text if it's an array of objects like { type: 'text', text: '...' }
                 const texts = mcpToolResult.content
                   .map((part: any) =>
                     part && typeof part.text === "string" ? part.text : null
                   )
                   .filter(
                     (text: string | null): text is string => text !== null
-                  ); // Filter out nulls
-
+                  );
                 if (texts.length > 0) {
-                  responseContent = texts.join("\n"); // Join multiple text parts
+                  responseContent = texts.join("\n");
                 } else {
-                  // If no text parts found, stringify the original array
                   responseContent = JSON.stringify(mcpToolResult.content);
                 }
               } else if (
                 mcpToolResult.content !== null &&
                 mcpToolResult.content !== undefined
               ) {
-                // Fallback for other non-null/undefined object/primitive types
                 responseContent = JSON.stringify(mcpToolResult.content);
               }
-              // If mcpToolResult.content was null or undefined, the default message remains
             } catch (parseError) {
               console.error(
                 `Error simplifying tool response content for "${toolName}", falling back to stringify:`,
                 parseError
               );
-              // Fallback to stringifying the original content if simplification logic errors
               try {
                 responseContent = JSON.stringify(mcpToolResult.content);
               } catch (stringifyError) {
@@ -351,21 +467,19 @@ export const chatWithLLM = async (req: any, res: any) => {
                 responseContent = `Error: Could not process tool response content. Type: ${typeof mcpToolResult.content}`;
               }
             }
-            // --- End simplification ---
 
             console.log(
               `  Simplified/Prepared content for "${toolName}":`,
               responseContent
-            ); // Log the content being sent back
+            );
 
             functionResponses.push({
               functionResponse: {
                 name: toolName,
-                response: { content: responseContent }, // Use the simplified/stringified content
+                response: { content: responseContent },
               },
             });
           } else {
-            // Handle tool call failure after retries
             functionResponses.push({
               functionResponse: {
                 name: toolName,
@@ -379,15 +493,8 @@ export const chatWithLLM = async (req: any, res: any) => {
             });
           }
         })
-      ); // End Promise.all map function
-
-      // --- Send Tool Responses back to LLM (with Retry) ---
-      console.log(
-        "Attempting to send tool responses back to Gemini:",
-        JSON.stringify(functionResponses)
       );
-      // Wrap the send message call in a try-catch specifically for this step,
-      // although sendMessageWithRetry also throws on final failure.
+
       try {
         result = await sendMessageWithRetry(
           chat,
@@ -400,20 +507,17 @@ export const chatWithLLM = async (req: any, res: any) => {
           "FATAL: Failed to send tool responses to Gemini even after retries.",
           sendError
         );
-        // Rethrow the error to be caught by the main try/catch block
         throw sendError;
       }
 
-      // --- Check for more function calls ---
       currentContent = response?.candidates?.[0]?.content;
       functionCallsToProcess = currentContent?.parts
         ?.filter((part: Part) => !!part.functionCall)
         .map((part: Part) => part.functionCall as FunctionCall);
-    } // End while loop for processing function calls
+    }
 
-    // --- Extract Final Text Answer ---
     let finalAnswer =
-      "Sorry, I encountered an issue and could not generate a final response."; // Default message
+      "Sorry, I encountered an issue and could not generate a final response.";
     if (response?.candidates?.[0]?.content?.parts) {
       const textParts = response.candidates[0].content.parts
         .filter(
@@ -423,20 +527,15 @@ export const chatWithLLM = async (req: any, res: any) => {
         .map((part) => part.text);
 
       if (textParts.length > 0) {
-        finalAnswer = textParts.join(" "); // Join multiple text parts if any
+        finalAnswer = textParts.join(" ");
       } else if (
         response.candidates[0].finishReason === "STOP" ||
         !response.candidates[0].finishReason
       ) {
-        // If it stopped normally but produced no text (e.g., only function calls happened?)
         console.log(
           "Gemini finished (or finish reason unclear), but no final text part was generated."
         );
-        // Keep default sorry message or adjust. Maybe check if function calls were just made?
-        // If functionResponses is not empty from the last loop, maybe say "Tool action completed."
-        // For simplicity, we keep the "Sorry..." message for now.
       } else {
-        // Handle other finish reasons if needed
         finalAnswer = `Processing stopped. Reason: ${response.candidates[0].finishReason}`;
         console.warn(
           `Gemini stopped with reason: ${response.candidates[0].finishReason}`,
@@ -450,7 +549,6 @@ export const chatWithLLM = async (req: any, res: any) => {
         response.promptFeedback
       );
     } else if (!response) {
-      // This case might happen if the initial sendMessageWithRetry failed entirely
       finalAnswer =
         "Sorry, there was a problem communicating with the AI model.";
       console.error(
@@ -460,28 +558,22 @@ export const chatWithLLM = async (req: any, res: any) => {
 
     console.log("Final Gemini response being sent to user:", finalAnswer);
 
-    // --- Log the interaction ---
-    await logChatInteraction(modelName, message, finalAnswer);
+    // Use currentModelName and currentMessage which are confirmed strings here
+    await logChatInteraction(currentModelName, currentMessage, finalAnswer);
 
-    // --- Send Response to Client ---
     const finalHistory = await chat.getHistory();
     res.json({ reply: finalAnswer, history: finalHistory });
   } catch (err: any) {
     console.error("Error in chatWithLLM:", err.stack || err);
-    // Attempt to log the error scenario
+    // Use currentModelName and currentMessage if available, otherwise fall back
     await logChatInteraction(
-      modelName || "unknown_model_on_error",
-      message || "unknown_query_on_error",
+      currentModelName || "unknown_model_on_error",
+      currentMessage || "unknown_query_on_error",
       `Error during processing: ${err.message || "Unknown server error"}`
     );
-    // Send error response
-    res
-      .status(500)
-      .json({
-        error: `Failed in chat handler: ${
-          err.message || "Unknown server error"
-        }`,
-      });
+    res.status(500).json({
+      error: `Failed in chat handler: ${err.message || "Unknown server error"}`,
+    });
   }
 };
 // --- END OF FILE chatLLM.ts ---

@@ -1,3 +1,4 @@
+// MessageInput.tsx
 import {
   Box,
   TextField,
@@ -9,46 +10,73 @@ import {
 import SendIcon from "@mui/icons-material/Send";
 import PublicIcon from "@mui/icons-material/Public";
 import CheckIcon from "@mui/icons-material/Check";
-import MicIcon from "@mui/icons-material/Mic"; // Added
-import StopIcon from "@mui/icons-material/Stop"; // Added
-import { useState, useRef, useCallback, useEffect } from "react"; // Added useRef, useCallback
+import MicIcon from "@mui/icons-material/Mic";
+import StopIcon from "@mui/icons-material/Stop";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
+import ClearIcon from "@mui/icons-material/Clear";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "react-toastify";
 import { get } from "../../utils/api_helper/api_helper";
-// You might want a helper for posting files, or use fetch directly
-// import { postWithFile } from "../../utils/api_helper/api_helper";
 
 declare global {
   interface Window {
     api: {
       getMicStatus: (status: string) => Promise<boolean>;
-      // add other api methods here if needed
     };
   }
 }
+
 interface Props {
-  inputValue: string;
-  handleSubmit: (
-    e?: React.FormEvent<HTMLFormElement>,
+  onMessageSubmit: (
+    text: string,
+    files: File[],
     searchWeb?: boolean
-  ) => void | Promise<void>;
-  setInputValue: (value: string) => void;
-  isLoading?: boolean; // This is for the main text submission
+  ) => Promise<void>;
+  isLoading?: boolean; // For the main text submission loading state from parent
 }
 
+const MAX_FILES = 5;
+const MAX_FILE_SIZE_MB = 25;
+
+// Using the ACCEPTED_FILE_TYPES_STRING from your last provided snippet
+const ACCEPTED_FILE_TYPES_STRING = [
+  "application/pdf",
+  ".pdf", // Note: ".pdf" might not be standard for accept attr, MIME type is preferred
+  // "application/msword", ".doc",
+  // "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".docx",
+  "text/csv",
+  ".csv",
+  "text/plain",
+  ".txt",
+  "audio/*",
+  "image/*",
+  "video/*",
+  "application/vnd.ms-excel",
+  ".xls",
+  ".xlsx",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  // "application/vnd.ms-powerpoint",
+  //  ".ppt",
+  ".pptx",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+].join(",");
+
 const MessageInput = ({
-  inputValue,
-  setInputValue,
-  isLoading,
-  handleSubmit,
+  onMessageSubmit,
+  isLoading: parentIsLoading,
 }: Props) => {
+  const [inputValue, setInputValue] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isSearchWebActive, setIsSearchWebActive] = useState(false);
-  const [isMicEnabled, setIsMicEnabled] = useState(false); // For microphone status
-  // --- Audio Recording State and Refs ---
+  const [isMicEnabled, setIsMicEnabled] = useState(false);
   const [isAudioRecording, setIsAudioRecording] = useState(false);
-  const [isAudioUploading, setIsAudioUploading] = useState(false); // For API call loading state
+  const [isAudioUploading, setIsAudioUploading] = useState(false);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null); // To hold the stream for proper cleanup
+  const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleToggleSearchWeb = () => {
     setIsSearchWebActive((prev) => !prev);
@@ -56,13 +84,7 @@ const MessageInput = ({
 
   useEffect(() => {
     if (window?.api?.getMicStatus) {
-      window.api.getMicStatus("status").then((res) => {
-        if (res) {
-          setIsMicEnabled(true);
-        } else {
-          setIsMicEnabled(false);
-        }
-      });
+      window.api.getMicStatus("status").then((res) => setIsMicEnabled(res));
     }
   }, []);
 
@@ -74,189 +96,254 @@ const MessageInput = ({
           (item: any) => item?.key === "brave-search"
         );
         if (!braveSearch || !braveSearch?.config?.env?.BRAVE_API_KEY) {
-          toast.info(
-            "Brave Search MCP is required for this operation and is not configured in your settings."
-          );
+          toast.info("Brave Search MCP is not configured.");
           return null;
         }
         handleToggleSearchWeb();
       }
     } catch (e) {
       console.error("Error checking Brave config:", e);
-      toast.info(
-        "Brave Search MCP is required for this operation and is not configured in your settings."
-      );
+      toast.error("Could not verify Brave Search configuration.");
+    }
+  };
+
+  const mainInputAreaBusy =
+    parentIsLoading || isAudioRecording || isAudioUploading;
+  const canSubmitForm = () =>
+    (inputValue.trim() !== "" || selectedFiles.length > 0) &&
+    !mainInputAreaBusy;
+
+  const handleFormSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
+    e?.preventDefault();
+    if (!canSubmitForm()) return;
+
+    await onMessageSubmit(inputValue.trim(), selectedFiles, isSearchWebActive);
+    setInputValue("");
+    setSelectedFiles([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   const handleKeyPress = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey &&
-      !isLoading &&
-      !isAudioRecording && // Don't submit text if recording
-      inputValue.trim()
-    ) {
+    if (event.key === "Enter" && !event.shiftKey && canSubmitForm()) {
       event.preventDefault();
-      handleSubmit(undefined, isSearchWebActive);
+      handleFormSubmit();
     }
   };
 
-  const handleActualSubmit = () => {
-    if (!isLoading && !isAudioRecording && inputValue.trim()) {
-      handleSubmit(undefined, isSearchWebActive);
+  const handleFileSelectClick = () => {
+    if (mainInputAreaBusy) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      const newFiles = Array.from(event.target.files);
+      let addedFiles: File[] = [];
+      const currentFileNames = selectedFiles.map((f) => f.name);
+
+      newFiles.forEach((file) => {
+        if (selectedFiles.length + addedFiles.length >= MAX_FILES) {
+          toast.warn(`Maximum ${MAX_FILES} files allowed.`);
+          return;
+        }
+        if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+          toast.warn(
+            `File "${file.name}" exceeds ${MAX_FILE_SIZE_MB}MB limit.`
+          );
+          return;
+        }
+        if (
+          currentFileNames.includes(file.name) ||
+          addedFiles.some((af) => af.name === file.name)
+        ) {
+          toast.info(`File "${file.name}" is already selected or in batch.`);
+          return;
+        }
+        addedFiles.push(file);
+      });
+
+      if (addedFiles.length > 0) {
+        setSelectedFiles((prev) => [...prev, ...addedFiles]);
+        toast.success(`${addedFiles.length} file(s) added.`);
+      }
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
-  // --- Audio Recording Functions ---
+  const handleRemoveFile = (fileName: string) => {
+    setSelectedFiles((prevFiles) =>
+      prevFiles.filter((file) => file.name !== fileName)
+    );
+    toast.info(`File "${fileName}" removed.`);
+  };
+
   const handleStartRecording = useCallback(async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      toast.error("MediaDevices API not supported by this browser.");
-      console.error("MediaDevices API not supported.");
+      toast.error("MediaDevices API not supported.");
       return;
     }
+    if (selectedFiles.length > 0) {
+      toast.warn("Clear selected files before starting voice input.");
+      return;
+    }
+    if (isAudioRecording || isAudioUploading) return; // Already recording or uploading
 
-    // Clear previous audio if any
     audioChunksRef.current = [];
-    setInputValue(""); // Optionally clear text input when starting voice
+    setInputValue("");
+    setIsAudioRecording(true); // Set state before async operations
 
     try {
-      toast.info("Requesting microphone permission...");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream; // Store stream for cleanup
+      streamRef.current = stream;
       mediaRecorderRef.current = new MediaRecorder(stream);
 
       mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
 
       mediaRecorderRef.current.onstop = async () => {
-        setIsAudioRecording(false); // Set recording to false visually
-        toast.info("Recording stopped. Processing audio...");
+        // isAudioRecording is set to false in handleStopRecording or error handler
         const audioBlob = new Blob(audioChunksRef.current, {
           type: "audio/webm",
-        }); // Or audio/ogg, audio/mp4
-        audioChunksRef.current = []; // Clear chunks
-
-        // Clean up stream tracks (IMPORTANT!)
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop());
-          streamRef.current = null;
-          console.log("Microphone stream stopped.");
-        }
+        });
+        audioChunksRef.current = [];
+        streamRef.current?.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
 
         if (audioBlob.size === 0) {
           toast.warn("No audio recorded.");
+          setIsAudioUploading(false); // Ensure this is reset
           return;
         }
 
-        // Send to API
         setIsAudioUploading(true);
         const formData = new FormData();
-        // The field name 'audioFile' and filename 'recording.webm' should match API expectations
         formData.append("audioFile", audioBlob, "recording.webm");
 
         try {
-          // Replace with your actual API endpoint and method
           const response = await fetch(
             `${import.meta.env.VITE_API_URL}/api/chat/text`,
             {
-              // TODO: Replace with actual API endpoint
               method: "POST",
               body: formData,
-              // Add headers if needed, e.g., Authorization
             }
           );
-
           if (!response.ok) {
-            const errorData = await response.text();
-            throw new Error(
-              `API Error: ${response.status} - ${
-                errorData || response.statusText
-              }`
-            );
+            const errorText = await response
+              .text()
+              .catch(() => `HTTP error ${response.status}`);
+            throw new Error(`API Error: ${response.status} - ${errorText}`);
           }
-
-          const result = await response.json(); // Assuming API returns JSON with a transcript
+          const result = await response.json();
           if (result.transcript) {
             setInputValue(result.transcript);
             toast.success("Voice input transcribed!");
-            // Optionally, automatically submit the transcribed text:
-            // handleSubmit(undefined, isSearchWebActive);
           } else {
-            toast.warn("Transcription not found in API response.");
+            toast.warn("Transcription not found.");
           }
-        } catch (apiError) {
-          console.error("Error sending audio to API:", apiError);
-          if (apiError instanceof Error) {
-            toast.error(`Failed to process audio: ${apiError.message}`);
-          } else {
-            toast.error("An unknown error occurred while processing audio.");
-          }
+        } catch (apiError: any) {
+          toast.error(`Failed to process audio: ${apiError.message}`);
         } finally {
           setIsAudioUploading(false);
         }
       };
-
-      mediaRecorderRef.current.onerror = (event) => {
-        console.error("MediaRecorder error:", event);
-        let errorMessage = "Unknown MediaRecorder error";
-        // @ts-ignore
-        if (event.error && event.error.message) {
-          // @ts-ignore
-          errorMessage = event.error.message;
-        }
-        toast.error(`Recording error: ${errorMessage}`);
+      mediaRecorderRef.current.onerror = (event: any) => {
+        toast.error(
+          `Recording error: ${event.error?.message || "Unknown error"}`
+        );
         setIsAudioRecording(false);
-        // Clean up stream tracks on error too
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop());
-          streamRef.current = null;
-        }
+        setIsAudioUploading(false);
+        streamRef.current?.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       };
 
       mediaRecorderRef.current.start();
-      setIsAudioRecording(true);
       toast.success("Recording started!");
-    } catch (err) {
-      console.error("Error starting recording:", err);
-      if (err instanceof Error) {
-        if (err.name === "NotAllowedError") {
-          toast.error(
-            "Microphone permission denied. Please enable it in your browser settings."
-          );
-        } else if (err.name === "NotFoundError") {
-          toast.error(
-            "No microphone found. Please ensure a microphone is connected and enabled."
-          );
-        } else {
-          toast.error(`Could not start recording: ${err.message}`);
-        }
-      } else {
-        toast.error(
-          "An unknown error occurred while trying to start recording."
-        );
-      }
-      // Ensure stream is cleaned up if start fails after getUserMedia
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-      setIsAudioRecording(false); // Ensure state is reset
+    } catch (err: any) {
+      toast.error(`Could not start recording: ${err.message}`);
+      setIsAudioRecording(false); // Reset on error
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     }
-  }, [setInputValue, handleSubmit, isSearchWebActive]); // Added dependencies
+  }, [selectedFiles.length, isAudioRecording, isAudioUploading]);
 
   const handleStopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && isAudioRecording) {
-      mediaRecorderRef.current.stop();
-      // onstop handler will manage setIsAudioRecording(false) and other cleanup
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === "recording"
+    ) {
+      mediaRecorderRef.current.stop(); // onstop will handle stream cleanup and more
     }
-  }, [isAudioRecording]); // Added dependency
+    setIsAudioRecording(false); // Set immediately for UI feedback
+    // If stream wasn't cleaned up by onstop (e.g., error before onstop), try cleanup here
+    if (streamRef.current && mediaRecorderRef.current?.state !== "inactive") {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      console.log("Fallback stream cleanup in handleStopRecording");
+    }
+  }, []);
+
+  const micButtonDisabled = isAudioRecording
+    ? isAudioUploading // When recording (Stop button): disable only if processing previous audio
+    : !isMicEnabled ||
+      parentIsLoading ||
+      isAudioUploading ||
+      selectedFiles.length > 0;
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+    <Box
+      component="form"
+      onSubmit={handleFormSubmit}
+      sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+    >
+      {selectedFiles.length > 0 && (
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 0.75,
+            p: 1,
+            mb: 0.5,
+            maxHeight: "100px",
+            overflowY: "auto",
+            border: (theme) => `1px solid ${theme.palette.divider}`,
+            borderRadius: "12px",
+          }}
+        >
+          {selectedFiles.map((file) => (
+            <Tooltip
+              key={file.name}
+              title={`${file.name} (${(file.size / 1024 / 1024).toFixed(
+                2
+              )} MB)`}
+            >
+              <Chip
+                label={
+                  file.name.length > 20
+                    ? `${file.name.substring(0, 17)}...`
+                    : file.name
+                }
+                size="small"
+                onDelete={
+                  mainInputAreaBusy
+                    ? undefined
+                    : () => handleRemoveFile(file.name)
+                }
+                deleteIcon={
+                  mainInputAreaBusy ? <span /> : <ClearIcon fontSize="small" />
+                }
+                disabled={mainInputAreaBusy}
+                variant="outlined"
+              />
+            </Tooltip>
+          ))}
+        </Box>
+      )}
+
       <Box
         sx={{
           display: "flex",
@@ -270,23 +357,41 @@ const MessageInput = ({
           minHeight: "48px",
         }}
       >
-        {/* Microphone Button */}
+        <Tooltip title="Attach Files">
+          <span>
+            <IconButton
+              color="primary"
+              onClick={handleFileSelectClick}
+              disabled={mainInputAreaBusy || selectedFiles.length >= MAX_FILES}
+              size="medium"
+            >
+              <AttachFileIcon />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <input
+          type="file"
+          multiple // Allows selecting multiple files
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          style={{ display: "none" }}
+          accept={ACCEPTED_FILE_TYPES_STRING}
+          disabled={mainInputAreaBusy}
+        />
+
         <Tooltip
           title={isAudioRecording ? "Stop Recording" : "Start Voice Input"}
         >
           <span>
-            {" "}
-            {/* Tooltip needs a child that can accept a ref if disabled */}
             <IconButton
               color={isAudioRecording ? "error" : "primary"}
               onClick={
                 isAudioRecording ? handleStopRecording : handleStartRecording
               }
-              // Disable mic if text is submitting, or if audio is currently uploading
-              disabled={!isMicEnabled || isLoading || isAudioUploading}
+              disabled={micButtonDisabled}
               size="medium"
             >
-              {isAudioUploading ? (
+              {isAudioUploading ? ( // If actively uploading, always show spinner
                 <CircularProgress size={24} color="inherit" />
               ) : isAudioRecording ? (
                 <StopIcon />
@@ -302,17 +407,19 @@ const MessageInput = ({
           variant="standard"
           size="small"
           placeholder={
-            isAudioRecording ? "Recording... speak now" : "Type your message..."
+            isAudioRecording
+              ? "Recording... speak now"
+              : selectedFiles.length > 0
+              ? "Add a message for your files..."
+              : "Type your message..."
           }
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyPress={handleKeyPress}
-          disabled={isLoading || isAudioRecording || isAudioUploading} // Disable input while recording or uploading audio
+          disabled={mainInputAreaBusy}
           multiline
           maxRows={5}
-          InputProps={{
-            disableUnderline: true,
-          }}
+          InputProps={{ disableUnderline: true }}
           sx={{
             flexGrow: 1,
             alignSelf: "stretch",
@@ -325,24 +432,19 @@ const MessageInput = ({
             "& .MuiInputBase-input": {
               fontSize: "0.95rem",
               py: "2.5px",
+              lineHeight: 1.4,
             },
           }}
         />
-        <Tooltip title={isLoading ? "Sending..." : "Send Message"}>
+        <Tooltip title={parentIsLoading ? "Sending..." : "Send Message"}>
           <span>
             <IconButton
+              type="submit"
               color="primary"
-              onClick={handleActualSubmit}
-              disabled={
-                isLoading ||
-                isAudioRecording ||
-                isAudioUploading ||
-                !inputValue.trim()
-              } // Also disable if recording/uploading
+              disabled={!canSubmitForm()}
               size="medium"
             >
-              {/* Show loading spinner if main text submission is loading, but not if audio is uploading */}
-              {isLoading && !isAudioUploading ? (
+              {parentIsLoading && !isAudioUploading ? (
                 <CircularProgress size={24} color="inherit" />
               ) : (
                 <SendIcon />
@@ -351,13 +453,10 @@ const MessageInput = ({
           </span>
         </Tooltip>
       </Box>
+
       <Box sx={{ display: "flex", justifyContent: "flex-start", px: 1 }}>
         <Tooltip
-          title={
-            isSearchWebActive
-              ? "Web search is ON"
-              : "Search the web with your message"
-          }
+          title={isSearchWebActive ? "Web search is ON" : "Search the web"}
         >
           <Chip
             icon={
@@ -370,10 +469,10 @@ const MessageInput = ({
             label="Search Web"
             clickable
             onClick={async () => {
-              if (isAudioRecording || isAudioUploading) return; // Don't toggle if busy with audio
+              if (mainInputAreaBusy) return;
               await checkIfBraveIsConfigfured();
             }}
-            disabled={isLoading || isAudioRecording || isAudioUploading} // Disable if any loading/recording
+            disabled={mainInputAreaBusy}
             size="small"
             variant={isSearchWebActive ? "filled" : "outlined"}
             color={isSearchWebActive ? "primary" : "default"}
@@ -393,8 +492,6 @@ const MessageInput = ({
           />
         </Tooltip>
       </Box>
-      {/* Optional: Display detailed audio status if needed */}
-      {/* { (isAudioRecording || isAudioUploading) && <Typography variant="caption">Audio Status: ...</Typography> } */}
     </Box>
   );
 };

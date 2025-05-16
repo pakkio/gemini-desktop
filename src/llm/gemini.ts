@@ -14,7 +14,7 @@ const configPath = isDev
   : path.join(app.getPath("userData"), "serverConfig.json"); // for packaged app
 
 
-export async function initializeAndGetModel(model: string) {
+export async function initializeAndGetModel(model: string,contentReadFromFile:string|boolean) {
   try {
     const data = fs.readFileSync(configPath, "utf-8");
     if (!data) {
@@ -28,6 +28,7 @@ export async function initializeAndGetModel(model: string) {
       model: model,
       systemInstruction:`
       You are expert assistant who makes full utilization of the available tools and make sure user gets what he requested for. You try to fulfill the request completely on your own by using various available tools. You always answer in **Markdown**.
+      ${contentReadFromFile?`If user asks about any file like image ,audio, excel file,csv, txt or any other file, use "CONTEXT OF FILE" to answer user query which is already present in user input`:``}
       1. user sends request.
       2. you check for suitable tools to fulfill user request. if required call multiple tools to fulfill user request.
       3. Make user interaction as less as possiible for solving user query.

@@ -1,37 +1,37 @@
+// ChatPage.tsx
+
+// ... (imports and other code remain the same) ...
 import { Box } from "@mui/material";
 import ChatHeader from "./ChatHeader";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import { useState, useRef, useEffect } from "react";
-import { get, post } from "../../utils/api_helper/api_helper"; // Adjust path if needed
+// No need for `post` from api_helper if using fetch directly for this
+import { get } from "../../utils/api_helper/api_helper";
 import { useNavigate } from "react-router-dom";
-import { ChatMessage } from "./types/types"; // Adjust path if needed
-import ChatHistorySidebar, { ChatHistory } from "./ChatHistorySidebar";
+import { ChatMessage, FileAttachment, ChatHistory } from "./types/types";
+import ChatHistorySidebar from "./ChatHistorySidebar";
 import { v4 as uuidv4 } from "uuid";
+
 
 export default function ChatPage() {
   const [selectedModel, setSelectedModel] = useState("gemini-1.5-flash");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputValue, setInputValue] = useState("");
+  // inputValue is managed by MessageInput, ChatPage doesn't need to hold it unless for specific reset scenarios
   const [isLoading, setIsLoading] = useState(false);
   const [chatHistories, setChatHistories] = useState<ChatHistory[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const listContainerRef = useRef<HTMLDivElement>(null); // Ref for the scrollable container
+  const listContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   const toggleDrawer = () => {
     setDrawerOpen((prev) => !prev);
   };
 
-  // --- Existing checkServerConfig function ---
   async function checkServerConfig() {
-    // Keep your existing logic, maybe add better loading/error states later
     try {
-      // Simulate loading check if needed for testing UI
-      // setIsLoading(true);
-      // await new Promise(resolve => setTimeout(resolve, 1000));
       const serverConfig = await get("/api/server-config");
       if (!serverConfig?.GEMINI_API_KEY) {
         setIsLoading(false);
@@ -41,76 +41,95 @@ export default function ChatPage() {
     } catch (e) {
       setIsLoading(false);
       console.log(e);
-      // Optionally navigate or show an error message
     }
   }
+
   useEffect(() => {
     checkServerConfig();
-    // Add some initial placeholder messages for design preview if desired
-    // setMessages([
-    //   { role: 'user', parts: [{ text: 'Hello Gemini!' }] },
-    //   { role: 'model', parts: [{ text: 'Hi there! How can I help you today?' }] },
-    //   { role: 'user', parts: [{ text: 'Can you explain React Hooks?' }] },
-    //   { role: 'model', parts: [{ text: "Certainly! React Hooks are functions that let you “hook into” React state and lifecycle features from function components..." }] },
-    // ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- Improved scrollToBottom ---
   const scrollToBottom = () => {
-    // Scroll the container, not just the dummy div
     if (listContainerRef.current) {
-      listContainerRef.current.scrollTop =
-        listContainerRef.current.scrollHeight;
+      listContainerRef.current.scrollTop = listContainerRef.current.scrollHeight;
     }
-    // The dummy div approach is also fine, but scrolling the container is more direct
-    // messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
-    // Use timeout to ensure DOM has updated after message state change
     const timer = setTimeout(() => {
       scrollToBottom();
-    }, 100); // Small delay
+    }, 100);
     return () => clearTimeout(timer);
   }, [messages]);
 
   useEffect(() => {
     const stored = localStorage.getItem("chatHistories");
     if (stored) {
-      setChatHistories(JSON.parse(stored));
+      try {
+        setChatHistories(JSON.parse(stored));
+      } catch (error) {
+        console.error("Failed to parse chat histories from localStorage", error);
+        localStorage.removeItem("chatHistories");
+      }
     }
   }, []);
 
-  useEffect(() => {
-    if (!currentChatId || messages.length === 0) return;
+ useEffect(() => {
+    if (!currentChatId) return;
 
-    const updatedHistories = [...chatHistories];
-    const idx = updatedHistories.findIndex((chat) => chat.id === currentChatId);
+    const currentChat = chatHistories.find((chat) => chat.id === currentChatId);
 
-    const firstUserMessage = messages.find((m) => m.role === "user")?.parts[0]
-      ?.text;
-    const newTitle = firstUserMessage?.slice(0, 25) || "New Chat";
+    if (messages.length > 0 || (currentChat && currentChat.messages.length !== messages.length)) {
+        const updatedHistories = [...chatHistories];
+        const idx = updatedHistories.findIndex((chat) => chat.id === currentChatId);
 
-    if (idx >= 0) {
-      updatedHistories[idx].messages = messages;
-      updatedHistories[idx].title = newTitle;
-    } else {
-      updatedHistories.push({
-        id: currentChatId,
-        title: newTitle,
-        messages,
-        createdAt: new Date().toISOString(),
-      });
+        const firstUserMessage = messages.find((m) => m.role === "user");
+        let newTitle = "New Chat";
+
+        if (firstUserMessage) {
+            if (firstUserMessage.parts.length > 0 && firstUserMessage.parts[0].text) {
+                newTitle = firstUserMessage.parts[0].text.slice(0, 30) + (firstUserMessage.parts[0].text.length > 30 ? "..." : "");
+            } else if (firstUserMessage.files && firstUserMessage.files.length > 0) {
+                const firstFileName = firstUserMessage.files[0].name;
+                newTitle = firstFileName.slice(0, 25) + (firstFileName.length > 25 || firstUserMessage.files.length > 1 ? "..." : "");
+                if (firstUserMessage.files.length > 1) newTitle += ` & more`;
+            }
+             // If both text and files, prioritize text or combine
+            if (firstUserMessage.parts.length > 0 && firstUserMessage.parts[0].text && firstUserMessage.files && firstUserMessage.files.length > 0) {
+                const textPart = firstUserMessage.parts[0].text;
+                newTitle = textPart.slice(0, 15) + (textPart.length > 15 ? "..." : "") + " (+files)";
+            }
+        }
+
+
+        if (idx >= 0) {
+            updatedHistories[idx].messages = messages;
+            if (updatedHistories[idx].title === "New Chat" || (messages.length > 0 && messages.indexOf(firstUserMessage!) === 0) ) {
+                 if (newTitle !== "New Chat") updatedHistories[idx].title = newTitle;
+            }
+        } else if (messages.length > 0) {
+            updatedHistories.push({
+                id: currentChatId,
+                title: newTitle,
+                messages,
+                createdAt: new Date().toISOString(),
+            });
+        } else {
+            return;
+        }
+
+        setChatHistories(updatedHistories);
+        localStorage.setItem("chatHistories", JSON.stringify(updatedHistories));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, currentChatId]);
 
-    setChatHistories(updatedHistories);
-    localStorage.setItem("chatHistories", JSON.stringify(updatedHistories));
-  }, [messages]);
 
   const startNewChat = () => {
-    setCurrentChatId(uuidv4());
+    const newId = uuidv4();
+    setCurrentChatId(newId);
     setMessages([]);
+    // Input value is managed by MessageInput, no need to set it here
     setDrawerOpen(false);
   };
 
@@ -122,68 +141,145 @@ export default function ChatPage() {
       setDrawerOpen(false);
     }
   };
-  // --- Existing sendMessage function (no changes needed here) ---
-  const sendMessage = async (
-    e?: React.FormEvent<HTMLFormElement>,
+
+  const handleMessageSubmit = async (
+    text: string,
+    files: File[],
     webSearch?: boolean
   ) => {
-    e?.preventDefault(); // Make event optional for direct calls
-    if (!inputValue.trim() || isLoading) return;
+    const trimmedText = text.trim();
+    if (!trimmedText && files.length === 0) return;
 
-    if (!currentChatId) {
-      const newId = uuidv4();
-      setCurrentChatId(newId);
+    let newChatId = currentChatId;
+    if (!newChatId) {
+      newChatId = uuidv4();
+      setCurrentChatId(newChatId);
+      setChatHistories(prev => {
+        if (newChatId === null) {
+          // Or however you want to handle the null case for finding
+          return prev;
+        }
+        if (!prev.find(ch => ch.id === newChatId)) {
+          return [
+            ...prev,
+            {
+              id: newChatId as string, // You're telling TypeScript "I know this is a string"
+              title: "New Chat",
+              messages: [],
+              createdAt: new Date().toISOString()
+            }
+          ];
+        }
+        return prev;
+      });
     }
 
+    const userMessageFiles: FileAttachment[] = files.map((file) => ({
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    }));
+
     const newUserMessage: ChatMessage = {
+      id: uuidv4(),
       role: "user",
-      parts: [{ text: inputValue.trim() }],
+      parts: trimmedText ? [{ text: trimmedText }] : [],
+      files: userMessageFiles.length > 0 ? userMessageFiles : undefined,
+      timestamp: new Date().toISOString(),
     };
 
     setMessages((prev) => [...prev, newUserMessage]);
-    const currentInput = inputValue; // Store input before clearing
-    setInputValue("");
     setIsLoading(true);
 
     try {
-      const historyForBackend = messages.filter(
-        (m) => m.role === "user" || m.role === "model"
-      );
+      const historyForBackend = messages
+        .filter((m) => m.role === "user" || m.role === "model")
+        .map(msg => ({
+            role: msg.role,
+            parts: msg.parts,
+            // files: msg.files // Only send file metadata if your API needs it in history
+        }));
 
-      const data = await post("/api/chat", {
-        message: currentInput.trim(), // Use stored input
-        history: historyForBackend,
-        model: selectedModel,
-        webSearch,
+      const formData = new FormData();
+      // Append text message if present
+      if (trimmedText) {
+        formData.append('message', trimmedText);
+      }
+      // Append other metadata
+      formData.append('history', JSON.stringify(historyForBackend));
+      formData.append('model', selectedModel);
+      if (webSearch) {
+        formData.append('webSearch', 'true');
+      }
+      // Append files
+      files.forEach((file) => {
+        formData.append('files', file, file.name); // 'files' is the field name for the array of files
       });
+
+      console.log("--- Sending to API via fetch ---");
+      // Log FormData entries (cannot directly log FormData like an object)
+      for (let pair of formData.entries()) {
+        if (pair[1] instanceof File) {
+            console.log(`${pair[0]}: ${pair[1].name} (type: ${pair[1].type}, size: ${pair[1].size})`);
+        } else {
+            console.log(`${pair[0]}: ${pair[1]}`);
+        }
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, { // Ensure this matches your API route
+        method: 'POST',
+        body: formData,
+        // Headers are not explicitly set for 'Content-Type' with FormData;
+        // the browser sets it to 'multipart/form-data' with the correct boundary.
+        // Add other headers if needed (e.g., Authorization)
+        // headers: { 'Authorization': 'Bearer YOUR_TOKEN_HERE' }
+      });
+
+      if (!response.ok) {
+        // Try to get error message from response body
+        let errorData;
+        try {
+            errorData = await response.json();
+        } catch (e) {
+            errorData = { error: await response.text() || `HTTP error! status: ${response.status}` };
+        }
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
 
       if (data?.reply) {
         const assistantMessage: ChatMessage = {
+          id: uuidv4(),
           role: "model",
           parts: [{ text: data.reply }],
+          timestamp: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, assistantMessage]);
       } else {
         setMessages((prev) => [
           ...prev,
           {
+            id: uuidv4(),
             role: "system",
             parts: [{ text: "No reply from assistant." }],
+            timestamp: new Date().toISOString(),
           },
         ]);
       }
     } catch (err: any) {
+      console.error("Error sending message:", err);
       setMessages((prev) => [
         ...prev,
         {
+          id: uuidv4(),
           role: "system",
           parts: [
             {
-              text: `Error: ${
-                err?.response?.data?.error || "Failed to fetch response."
-              }`,
+              text: `Error: ${err.message || "Failed to fetch response."}`,
             },
           ],
+          timestamp: new Date().toISOString(),
         },
       ]);
     } finally {
@@ -198,8 +294,8 @@ export default function ChatPage() {
         width: "100%",
         display: "flex",
         flexDirection: "column",
-        bgcolor: "background.default", // Use theme background color
-        overflow: "hidden", // Prevent body scroll
+        bgcolor: "background.default",
+        overflow: "hidden",
       }}
     >
       <ChatHistorySidebar
@@ -223,40 +319,32 @@ export default function ChatPage() {
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
         />
-        {/* Message List Area */}
         <Box
-          ref={listContainerRef} // Add ref here
+          ref={listContainerRef}
           sx={{
             flexGrow: 1,
-            overflowY: "auto", // Enable scrolling within this Box
-            p: { xs: 1, sm: 2, md: 3 }, // Responsive padding
+            overflowY: "auto",
+            p: { xs: 1, sm: 2, md: 3 },
             display: "flex",
             flexDirection: "column",
           }}
         >
           <MessageList
             messages={messages}
-            isLoading={isLoading} // Pass loading state
-            messagesEndRef={messagesEndRef} // Still needed for potential focus/marker
+            isLoading={isLoading}
+            messagesEndRef={messagesEndRef}
           />
-          {/* Invisible div to ensure scroll target is always at the bottom */}
           <div ref={messagesEndRef} style={{ height: "1px" }} />
         </Box>
-
-        {/* Input Area */}
         <Box
           sx={{
             p: { xs: 1, sm: 2 },
-            // borderTop: 1, // Use divider color from theme
-            // borderColor: 'divider',
-            bgcolor: "background.paper", // Use paper color for input area background
-            boxShadow: "0 -2px 5px rgba(0,0,0,0.05)", // Subtle shadow separating input
+            bgcolor: "background.paper",
+            boxShadow: "0 -2px 5px rgba(0,0,0,0.05)",
           }}
         >
           <MessageInput
-            inputValue={inputValue}
-            setInputValue={setInputValue}
-            handleSubmit={sendMessage}
+            onMessageSubmit={handleMessageSubmit}
             isLoading={isLoading}
           />
         </Box>
