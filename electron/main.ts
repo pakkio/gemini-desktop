@@ -7,6 +7,8 @@ import {
   systemPreferences,
   shell,
   dialog,
+  desktopCapturer,
+  session,
 } from "electron";
 // import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -143,6 +145,14 @@ app.on("activate", () => {
 });
 
 app.whenReady().then(async () => {
+  session.defaultSession.setDisplayMediaRequestHandler(
+    (_, callback) => {
+      desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
+        callback({ video: sources[0], audio: "loopback" });
+      });
+    },
+    { useSystemPicker: true }
+  );
   await checkAndRequestMicrophonePermission();
   startServer();
   createWindow();
