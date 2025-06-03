@@ -25,6 +25,7 @@ import { get, post } from "../../utils/api_helper/api_helper";
 import {
   SlowMotionVideo as SlowMotionVideoIcon,
   Gamepad as UnityIcon,
+  ShowChart as KiteIcon,
   Reddit as RedditIcon,
   Cloud as CloudIcon,
   Storage as StorageIcon,
@@ -82,6 +83,7 @@ const labelKeyMap: Record<string, string> = {
   "AWS KB Retrieval": "aws-kb-retrieval",
   "Brave Search": "brave-search",
   EverArt: "everart",
+  "Zerodha Kite": "kite",
   Playwright: "playwright",
   Reddit: "reddit",
   Unity: "mcp-unity",
@@ -145,6 +147,7 @@ const labelKeyMap: Record<string, string> = {
 
 // --- iconMap remains the same ---
 const iconMap: Record<string, JSX.Element> = {
+  "Zerodha Kite": <KiteIcon />,
   "AWS KB Retrieval": <CloudIcon />,
   "Brave Search": <SearchIcon />,
   Unity: <UnityIcon />,

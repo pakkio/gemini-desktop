@@ -25,6 +25,10 @@ export async function getDefaultServiceConfigs(path: string) {
         ABSOLUTE_PATH_TO_BUILD: "",
       },
     },
+    kite: {
+      command: "npx",
+      args: ["mcp-remote", "https://mcp.kite.trade/sse"],
+    },
     playwright: {
       command: "npx",
       args: ["@playwright/mcp@latest"],

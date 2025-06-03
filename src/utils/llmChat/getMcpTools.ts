@@ -16,6 +16,7 @@ import { app } from "electron";
 import which from "which";
 
 const mcpClients = new Map<string, McpClient>();
+const mcpClientTransports = new Map<string, StdioClientTransport>();
 const toolToServerMap = new Map<string, string>();
 let allMcpTools: McpTool[] = [];
 let allGeminiTools: FunctionDeclaration[] = [];
@@ -228,8 +229,10 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
   logToFile(`NPM Executable Path (npx): ${npxPath}`);
   logToFile(`UVX Executable Path (uvx): ${uvxPath}`);
   logToFile(`UV Executable Path (uv): ${uvPath}`);
+  logToFile(`Current active MCP clients: ${Array.from(mcpClients.keys()).join(', ') || 'None'}`);
 
-  mcpClients.clear();
+
+  // Clear per-run aggregation stores, but not mcpClients or mcpClientTransports
   toolToServerMap.clear();
   allMcpTools = [];
   allGeminiTools = [];
@@ -242,7 +245,7 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
       );
       return {
         allGeminiTools: [],
-        mcpClients: new Map(),
+        mcpClients: new Map(mcpClients), // Return a copy of the current state
         toolToServerMap: new Map(),
       };
     }
@@ -253,7 +256,7 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
     );
     return {
       allGeminiTools: [],
-      mcpClients: new Map(),
+      mcpClients: new Map(mcpClients), // Return a copy
       toolToServerMap: new Map(),
     };
   }
@@ -262,7 +265,7 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
     logToFile("⚠️ MCP config file is empty or could not be read.");
     return {
       allGeminiTools: [],
-      mcpClients: new Map(),
+      mcpClients: new Map(mcpClients), // Return a copy
       toolToServerMap: new Map(),
     };
   }
@@ -274,7 +277,7 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
     logToFile(`❌ Failed to parse MCP config file: ${parseError.message}`);
     return {
       allGeminiTools: [],
-      mcpClients: new Map(),
+      mcpClients: new Map(mcpClients), // Return a copy
       toolToServerMap: new Map(),
     };
   }
@@ -288,10 +291,13 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
       key: string;
       config: {
         env?: Record<string, string>;
-        command?: string; // Can be "npx", "uvx", "uv", or a full path
+        command?: string;
         args: string[];
       };
     }) => {
+      const clientKey = serverConfig.key; // Use a consistent key for maps
+
+      // --- Special config adjustments (existing logic) ---
       if (serverConfig.key === "mcp-unity") {
         serverConfig.config.args = serverConfig?.config?.env
           ?.ABSOLUTE_PATH_TO_BUILD
@@ -310,7 +316,7 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
 
       if (!webSearch && serverConfig.key === "brave-search") {
         logToFile(
-          `Skipping server "${serverConfig.label}" (key: ${serverConfig.key}) because webSearch is false.`
+          `Skipping server "${serverConfig.label}" (key: ${clientKey}) because webSearch is false.`
         );
         return;
       }
@@ -322,92 +328,90 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
         return;
       }
 
+      // --- Runner path determination (existing logic, moved up slightly for clarity) ---
       let specificCommand: string;
-      let runnerType: string; // For logging
+      let runnerType: string;
 
       if (serverConfig.config.command === "uvx") {
         specificCommand = uvxPath || "uvx";
         runnerType = "uvx";
-        if (
-          specificCommand === "uvx" &&
-          (uvxPath === "uvx" || uvxPath === null)
-        ) {
-          logToFile(
-            `Server "${serverConfig.label}": Using 'uvx' directly as a specific path for uvx (bundled or system) was not found or resolved.`
-          );
-        }
       } else if (serverConfig.config.command === "uv") {
         specificCommand = uvPath || "uv";
         runnerType = "uv";
-        if (specificCommand === "uv" && (uvPath === "uv" || uvPath === null)) {
-          logToFile(
-            `Server "${serverConfig.label}": Using 'uv' directly as a specific path for 'uv' (bundled or system) was not found or resolved.`
-          );
-        }
       } else if (
         serverConfig.config.command &&
         serverConfig.config.command !== "npx"
       ) {
-        // Custom command (neither 'npx', 'uvx', nor 'uv' explicitly)
         specificCommand = serverConfig.config.command;
         runnerType = "custom";
       } else {
-        // Default to npx or if command is 'npx' or command is undefined
         specificCommand = npxPath || "npx";
         runnerType = "npx";
-        if (
-          specificCommand === "npx" &&
-          (npxPath === "npx" || npxPath === null)
-        ) {
+      }
+
+
+      // --- Check for existing active client ---
+      if (mcpClients.has(clientKey)) {
+        const existingClient = mcpClients.get(clientKey)!;
+        const existingTransport = mcpClientTransports.get(clientKey);
+        logToFile(`Server "${serverConfig.label}" (key: ${clientKey}): Found existing client. Verifying connection...`);
+        try {
+          const toolsResult = await existingClient.listTools(); // Test connection
+          const currentServerTools = toolsResult.tools;
           logToFile(
-            `Server "${serverConfig.label}": Config command is '${
-              serverConfig.config.command || "default to npx"
-            }', using 'npx' directly as a full path was not found.`
+            `✅ Server "${serverConfig.label}" (key: ${clientKey}): Reusing active client. Tools: ${currentServerTools
+              .map((t) => t.name)
+              .join(", ")}`
           );
+
+          currentServerTools.forEach((tool) => {
+            if (toolToServerMap.has(tool.name)) {
+              logToFile(
+                `⚠️ Tool name conflict (during reuse): Tool "${tool.name}" from server "${clientKey}" (${serverConfig.label}) overrides tool from server "${toolToServerMap.get(tool.name)}".`
+              );
+            }
+            allMcpTools.push(tool);
+            toolToServerMap.set(tool.name, clientKey);
+          });
+          return; // Successfully reused, skip to next server config
+        } catch (e: any) {
+          logToFile(
+            `⚠️ Server "${serverConfig.label}" (key: ${clientKey}): Existing client failed to respond. Error: ${e.message}. Attempting to reconnect.`
+          );
+          if (existingTransport) {
+            try {
+              existingTransport.close();
+            } catch (closeError) {
+              logToFile(`   Error closing transport for stale client ${clientKey}: ${closeError}`);
+            }
+          }
+          mcpClients.delete(clientKey);
+          mcpClientTransports.delete(clientKey);
         }
       }
 
-      // Warnings for using fallback string commands if full paths weren't resolved
-      if (
-        runnerType === "npx" &&
-        specificCommand === "npx" &&
-        (npxPath === "npx" || npxPath === null)
-      ) {
-        logToFile(
-          `⚠️ Server "${serverConfig.label}" (npx runner): Attempting to use 'npx' command directly as a full path was not found. ` +
-            `This relies on 'npx' being in the OS's PATH for the packaged app, which may not be the case.`
-        );
+      // --- Logic for connecting a new client (or if reuse failed) ---
+      // Warnings for fallback string commands (existing logic)
+      if (runnerType === "npx" && specificCommand === "npx" && (npxPath === "npx" || npxPath === null)) {
+          logToFile(`Server "${serverConfig.label}" (npx runner): Using 'npx' directly as full path was not resolved.`);
       }
-      if (
-        runnerType === "uvx" &&
-        specificCommand === "uvx" &&
-        (uvxPath === "uvx" || uvxPath === null)
-      ) {
-        logToFile(
-          `⚠️ Server "${serverConfig.label}" (uvx runner): Attempting to use 'uvx' command directly as a full path (bundled or system) was not found. ` +
-            `This relies on 'uvx' being in the OS's PATH for the packaged app.`
-        );
+      if (runnerType === "uvx" && specificCommand === "uvx" && (uvxPath === "uvx" || uvxPath === null)) {
+          logToFile(`Server "${serverConfig.label}" (uvx runner): Using 'uvx' directly as full path was not resolved.`);
       }
-      if (
-        runnerType === "uv" &&
-        specificCommand === "uv" &&
-        (uvPath === "uv" || uvPath === null)
-      ) {
-        logToFile(
-          `⚠️ Server "${serverConfig.label}" (uv runner): Attempting to use 'uv' command directly as a full path (bundled or system) was not found. ` +
-            `This relies on 'uv' being in the OS's PATH for the packaged app.`
-        );
+       if (runnerType === "uv" && specificCommand === "uv" && (uvPath === "uv" || uvPath === null)) {
+          logToFile(`Server "${serverConfig.label}" (uv runner): Using 'uv' directly as full path was not resolved.`);
       }
 
+
       logToFile(
-        `Processing server config: ${
+        `Attempting to connect to server: ${
           serverConfig.label
         } (Runner: ${runnerType}, Command: ${specificCommand}, Args: ${JSON.stringify(
           serverConfig.config.args
         )})`
       );
 
-      let transport: StdioClientTransport | null = null;
+      let newTransport: StdioClientTransport | null = null;
 
       try {
         const baseEnv = { ...process.env, ...(serverConfig.config.env || {}) };
@@ -428,30 +432,49 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
         };
 
         logToFile(
-          `Attempting to start MCP server "${
+          `Starting MCP server "${
             serverConfig.label
           }" with command: ${params.command} ${(params.args || []).join(" ")}`
         );
 
-        transport = new StdioClientTransport(params);
+        newTransport = new StdioClientTransport(params);
+        const currentTransportInstance = newTransport; // Capture instance for handlers
 
-        transport.onclose = () => {
-          logToFile(`Transport explicitly closed for ${serverConfig.label}.`);
+        currentTransportInstance.onclose = () => {
+          logToFile(`Transport for ${serverConfig.label} (key: ${clientKey}) received 'close' event.`);
+          // Only remove if this specific transport instance is the one registered
+          if (mcpClientTransports.get(clientKey) === currentTransportInstance) {
+            logToFile(`Removing client ${clientKey} from active instances due to its transport closing.`);
+            mcpClients.delete(clientKey);
+            mcpClientTransports.delete(clientKey);
+          } else {
+             logToFile(`Client ${clientKey} is no longer (or was not yet) associated with this specific closing transport. No action on active instances.`);
+          }
         };
-        transport.onerror = (err) => {
+        currentTransportInstance.onerror = (err) => {
           logToFile(
-            `Transport error for ${serverConfig.label}: ${err.message}`
+            `Transport error for ${serverConfig.label} (key: ${clientKey}): ${err.message}`
           );
+          if (mcpClientTransports.get(clientKey) === currentTransportInstance) {
+            logToFile(`Removing client ${clientKey} from active instances due to transport error.`);
+            mcpClients.delete(clientKey);
+            mcpClientTransports.delete(clientKey);
+          } else {
+            logToFile(`Client ${clientKey} is no longer (or was not yet) associated with this specific transport experiencing an error. No action on active instances.`);
+          }
         };
 
         const client = new McpClient({
-          name: `mcp-gemini-backend-${serverConfig.key}`,
+          name: `mcp-gemini-backend-${clientKey}`,
           version: "1.0.0",
         });
 
-        await client.connect(transport);
+        await client.connect(currentTransportInstance);
 
-        mcpClients.set(serverConfig.key, client);
+        // Store new client and its transport globally
+        mcpClients.set(clientKey, client);
+        mcpClientTransports.set(clientKey, currentTransportInstance);
+
         logToFile(
           `MCP Client connected for ${serverConfig.label}. Listing tools...`
         );
@@ -459,7 +482,7 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
         const toolsResult = await client.listTools();
         const currentServerTools = toolsResult.tools;
         logToFile(
-          `✅ Connected to "${serverConfig.key}" (${
+          `✅ Connected to "${clientKey}" (${
             serverConfig.label
           }) using ${runnerType} with tools: ${currentServerTools
             .map((t) => t.name)
@@ -470,7 +493,7 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
           if (toolToServerMap.has(tool.name)) {
             logToFile(
               `⚠️ Tool name conflict: Tool "${tool.name}" from server "${
-                serverConfig.key
+                clientKey
               }" (${
                 serverConfig.label
               }) overrides tool from server "${toolToServerMap.get(
@@ -479,13 +502,13 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
             );
           }
           allMcpTools.push(tool);
-          toolToServerMap.set(tool.name, serverConfig.key);
+          toolToServerMap.set(tool.name, clientKey);
         });
       } catch (e: any) {
         const errorMsg = e instanceof Error ? e.message : String(e);
         const errorStack = e instanceof Error ? `\nStack: ${e.stack}` : "";
 
-        logToFile(`❌ Failed operation for MCP server "${serverConfig.label}"`);
+        logToFile(`❌ Failed operation for MCP server "${serverConfig.label}" (key: ${clientKey})`);
         logToFile(`   Runner Type: ${runnerType}`);
         logToFile(`   Command Attempted: ${specificCommand}`);
         logToFile(
@@ -493,76 +516,40 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
         );
         logToFile(`   Error: ${errorMsg}`);
 
+        // Existing detailed error hints
         if (errorMsg.includes("ENOENT")) {
           logToFile(
             `   Hint: ENOENT usually means the command '${specificCommand}' was not found or is not executable.`
           );
-          if (runnerType === "npx") {
-            logToFile(
-              `         - For npx: Is Node.js installed and 'npx' (resolved to '${npxPath}') in the system PATH accessible to the app?`
-            );
-          } else if (runnerType === "uvx") {
-            logToFile(
-              `         - For uvx: Was 'uvx' (resolved to '${uvxPath}') found bundled (with 'uv' dependency in '${resourcesBinPath}') or in system PATH accessible to the app?`
-            );
-            logToFile(
-              `         - If bundled, ensure 'uv' & 'uvx' are in '${resourcesBinPath}' and executable.`
-            );
-          } else if (runnerType === "uv") {
-            logToFile(
-              `         - For uv: Was 'uv' (resolved to '${uvPath}') found bundled (in '${resourcesBinPath}') or in system PATH accessible to the app?`
-            );
-            logToFile(
-              `         - If bundled, ensure 'uv' is in '${resourcesBinPath}' and executable.`
-            );
-          } else {
-            // Custom command
-            logToFile(
-              `         - If using a custom command, is '${specificCommand}' correct and in PATH or an absolute path?`
-            );
-          }
+           if (runnerType === "npx") logToFile(`         - For npx: Is Node.js installed and 'npx' (resolved to '${npxPath}') in PATH?`);
+           else if (runnerType === "uvx") logToFile(`         - For uvx: Was 'uvx' (resolved to '${uvxPath}') found bundled (with 'uv' in '${resourcesBinPath}') or in PATH?`);
+           else if (runnerType === "uv") logToFile(`         - For uv: Was 'uv' (resolved to '${uvPath}') found bundled (in '${resourcesBinPath}') or in PATH?`);
+           else logToFile(`         - If using a custom command, is '${specificCommand}' correct and in PATH or an absolute path?`);
         } else if (
           errorMsg.includes("closed") ||
           errorMsg.includes("ECONNREFUSED") ||
           errorMsg.includes("Transport closed")
         ) {
-          logToFile(
-            `   Hint: Connection closed/refused suggests the server process started but exited or crashed immediately.`
-          );
-          logToFile(
-            `         - Check the server's own logs/output if possible (e.g., if it's a script, add logging).`
-          );
-          if (runnerType === "uvx") {
-            logToFile(
-              `         - If using 'uvx', this can happen if 'uvx' starts but the underlying 'uv' command fails or the target MCP script (e.g. 'blender-mcp') crashes.`
-            );
-          } else if (runnerType === "uv") {
-            logToFile(
-              `         - If using 'uv', this can happen if 'uv' starts but the script it's supposed to run (e.g., via 'uv run ...') fails or crashes.`
-            );
-          }
-          logToFile(
-            `         - Check requirements (e.g., API keys in env: ${Object.keys(
-              serverConfig.config.env || {}
-            ).join(", ")})`
-          );
-          logToFile(
-            `         - Try running the command manually in a terminal: ${specificCommand} ${(
-              serverConfig.config.args || []
-            ).join(" ")}`
-          );
+          logToFile(`   Hint: Connection closed/refused suggests the server process exited/crashed.`);
+          logToFile(`         - Check server's own logs. For uvx/uv, check underlying script errors.`);
+          logToFile(`         - Check requirements (e.g., API keys in env: ${Object.keys(serverConfig.config.env || {}).join(", ")})`);
+          logToFile(`         - Try running manually: ${specificCommand} ${(serverConfig.config.args || []).join(" ")}`);
         } else {
           logToFile(`   Stack: ${errorStack}`);
         }
 
-        if (mcpClients.has(serverConfig.key)) {
-          mcpClients.delete(serverConfig.key);
+        // If this connection attempt failed, ensure it's not in global maps from this attempt
+        // (though it shouldn't be, as set() happens after successful connect)
+        if (mcpClients.has(clientKey) && mcpClientTransports.get(clientKey) === newTransport) {
+            mcpClients.delete(clientKey);
+            mcpClientTransports.delete(clientKey);
         }
-        if (transport && typeof transport.close === "function") {
+
+        if (newTransport && typeof newTransport.close === "function") {
           try {
-            transport.close();
+            newTransport.close();
           } catch (closeErr) {
-            logToFile(`   Error closing transport during cleanup: ${closeErr}`);
+            logToFile(`   Error closing transport during cleanup for ${clientKey}: ${closeErr}`);
           }
         }
       }
@@ -578,19 +565,25 @@ export async function connectToMcpServers(webSearch: boolean): Promise<{
       parameters: convertMcpSchemaToGeminiSchema(tool.inputSchema),
     }));
     logToFile(
-      `🔌 Total ${allMcpTools.length} MCP tools aggregated for Gemini from ${mcpClients.size} connected server(s).`
+      `🔌 Total ${allMcpTools.length} MCP tools aggregated for Gemini from ${mcpClients.size} active server(s).`
     );
   } else {
     logToFile(
-      "⚠️ No MCP tools were successfully loaded from any connected server."
+      "⚠️ No MCP tools were successfully loaded from any connected or reused server."
     );
   }
 
   logToFile(
-    `connectToMcpServers finished. ${mcpClients.size} clients connected. ${toolToServerMap.size} tools mapped.`
+    `connectToMcpServers finished. ${mcpClients.size} clients currently active globally. ${toolToServerMap.size} tools mapped for this run.`
   );
+  logToFile(`Globally active MCP client keys: ${Array.from(mcpClients.keys()).join(', ') || 'None'}`);
 
-  return { allGeminiTools, mcpClients, toolToServerMap };
+
+  return {
+    allGeminiTools,
+    mcpClients: new Map(mcpClients), // Return a snapshot copy of the currently active clients
+    toolToServerMap // This is already fresh for this run
+  };
 }
 
 // --- END OF FILE getMcpTools.ts ---
