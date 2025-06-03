@@ -1,0 +1,139 @@
+{
+  "version": "v2.1.1",
+  "entity": {
+    "type": "individual",
+    "role": "maintainer",
+    "name": "Shreyan Mehta",
+    "email": "developershreyan@gmail.com",
+    "phone": "",
+    "description": "I'm an open-source contributor and community speaker focused on practical AI adoption and tooling. This Gemini-based MCP desktop app is one of my FOSS contributions to the AI developer ecosystem from India to enable even non programmers use MCP without knowing what github is via drag and drop. I’ve recently conducted sessions like 'MCP 101 with Gemini' and a full-day workshop on A2A and MCP, with the goal of making advanced AI tooling accessible to all.\n\nYou can also connect with me on LinkedIn: https://www.linkedin.com/in/devsm/",
+    "webpageUrl": {
+      "url": "https://www.linkedin.com/in/devsm/",
+      "wellKnown": ""
+    }
+  },
+  "projects": [
+    {
+      "guid": "gemini-mcp-desktop-client",
+      "name": "Gemini MCP Desktop Client",
+      "description": "A leading open-source desktop app for Model Context Protocol (MCP), powered by Gemini and built using Electron. It supports plug-and-play configuration, pre-integrated servers, and free-to-use Gemini APIs — making it one of the most user-friendly MCP tools available. This app serves as a bridge for AI developers and enthusiasts to start using MCP without friction.",
+      "webpageUrl": {
+        "url": "https://github.com/duke7able/gemini-mcp-desktop-client"
+      },
+      "repositoryUrl": {
+        "url": "https://github.com/duke7able/gemini-mcp-desktop-client",
+        "wellKnown": "https://github.com/duke7able/gemini-mcp-desktop-client/blob/main/.well-known/funding-manifest-urls"
+      },
+      "licenses": ["spdx:GPL-3.0"],
+      "tags": ["mcp", "gemini", "ai", "electron", "desktop-app", "open-source", "foss", "llm"]
+    }
+  ],
+  "funding": {
+    "channels": [
+      {
+        "guid": "upi-india",
+        "type": "payment-provider",
+        "address": "mehtashreyan041.sm@okicici",
+        "description": "Support via UPI for one-time or recurring small contributions."
+      },
+      {
+        "guid": "direct-sponsor",
+        "type": "bank",
+        "address": "",
+        "description": "For sponsorships, grants, or large-scale funding, please contact: developershreyan@gmail.com"
+      }
+    ],
+    "plans": [
+      {
+        "guid": "infra-monthly",
+        "status": "active",
+        "name": "Infrastructure & Build Distribution (Monthly)",
+        "description": "Covers monthly hosting, build pipelines, dmg/msi generation, and testing across Mac & Windows.",
+        "amount": 300,
+        "currency": "USD",
+        "frequency": "monthly",
+        "channels": ["upi-india"]
+      },
+      {
+        "guid": "infra-one-time",
+        "status": "active",
+        "name": "Infrastructure Grant (One-Time)",
+        "description": "One-time contribution to cover long-term hosting, automation, and build infra setup.",
+        "amount": 50000,
+        "currency": "USD",
+        "frequency": "one-time",
+        "channels": ["direct-sponsor"]
+      },
+      {
+        "guid": "foss-growth",
+        "status": "active",
+        "name": "FOSS Development Acceleration",
+        "description": "Funds full-time development, new MCP integrations, Gemini updates, and advanced LLM features.",
+        "amount": 2000,
+        "currency": "USD",
+        "frequency": "monthly",
+        "channels": ["direct-sponsor"]
+      },
+      {
+        "guid": "mcp-subscription-fund",
+        "status": "active",
+        "name": "MCP Subscription & Integration Fund",
+        "description": "Enables access to the top 50 paid MCP endpoints for real-world compatibility testing and plug-in development.",
+        "amount": 2000,
+        "currency": "USD",
+        "frequency": "monthly",
+        "channels": ["direct-sponsor"]
+      },
+      {
+        "guid": "app-store-readiness",
+        "status": "active",
+        "name": "App Store Publishing & Certification",
+        "description": "Funds Microsoft Store & Mac App Store developer programs, testing, notarization, and deployment so that this can be deployed as an app for everyone to try out.",
+        "amount": 2000,
+        "currency": "USD",
+        "frequency": "one-time",
+        "channels": ["direct-sponsor"]
+      },
+      {
+        "guid": "llm-access-expansion",
+        "status": "active",
+        "name": "LLM & Diffusion Model API Credits",
+        "description": "Covers usage of Gemini Pro, GPT-4, Claude, and high-quality diffusion models for better offline/online use cases.",
+        "amount": 2000,
+        "currency": "USD",
+        "frequency": "monthly",
+        "channels": ["direct-sponsor"]
+      },
+      {
+        "guid": "local-llm-node",
+        "status": "active",
+        "name": "Community Local LLM GPU Node",
+        "description": "Setup of a 24/7 local inference GPU node with high VRAM to allow community access for local LLM experimentation and education.",
+        "amount": 5000,
+        "currency": "USD",
+        "frequency": "one-time",
+        "channels": ["direct-sponsor"]
+      },
+      {
+        "guid": "docs-and-onboarding",
+        "status": "active",
+        "name": "Docs, Videos & Community Support",
+        "description": "Funds beginner-friendly docs, tutorials, community onboarding kits, and online workshops.",
+        "amount": 350,
+        "currency": "USD",
+        "frequency": "one-time",
+        "channels": ["upi-india"]
+      },
+      {
+        "guid": "goodwill",
+        "status": "active",
+        "name": "Goodwill Support",
+        "description": "Pay what you wish to support Indian AI-focused open source contributions.",
+        "amount": 0,
+        "currency": "USD",
+        "frequency": "one-time",
+        "channels": ["upi-india"]
+      }
+    ]
+  }
+}
