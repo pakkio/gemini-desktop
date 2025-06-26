@@ -53,12 +53,18 @@ export async function postFormData<T = any>(
       method: "POST",
       body: data,
     });
-    if (req.ok) {
-      const res = await req.json();
-      if (res.success) {
-        return res.data;
-      }
+    
+    if (!req.ok) {
+      const errorText = await req.text();
+      throw new Error(`HTTP error! status: ${req.status}, message: ${errorText}`);
     }
+    
+    const res = await req.json();
+    if (res.success) {
+      return res.data;
+    }
+    
+    return undefined;
   } catch (err) {
     console.error(err);
     return undefined;

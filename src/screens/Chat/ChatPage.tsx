@@ -237,13 +237,15 @@ export default function ChatPage() {
 
       if (!response.ok) {
         // Try to get error message from response body
-        let errorData;
+        let errorMessage;
         try {
-            errorData = await response.json();
+            const errorData = await response.json();
+            errorMessage = errorData.error || `HTTP error! status: ${response.status}`;
         } catch (e) {
-            errorData = { error: await response.text() || `HTTP error! status: ${response.status}` };
+            // If JSON parsing fails, we can't read the response again
+            errorMessage = `HTTP error! status: ${response.status}`;
         }
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
